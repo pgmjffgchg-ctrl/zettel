@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Zettel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Zettel">
+<meta name="theme-color" content="#1E5C6E">
+<meta name="description" content="Einkaufsliste für die Familie – live auf allen iPhones.">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:wght@700;800&display=swap">
+<style>
+:root{
+  --bg:#EEF1EC; --surface:#FFFFFF; --surface-2:#E4E9E3; --text:#16211C; --muted:#5B6862; --line:#D2D9D2;
+  --accent:#1E5C6E; --accent-ink:#FFFFFF; --accent-soft:#D9E9EE;
+  --warm-soft:#FBEFD6; --warm-ink:#4A3306; --focus:#E0A33B;
+  --done:#2E8B57; --danger:#B23A2E;
+  --stripe-a:#1E5C6E; --stripe-b:#F1EDE0;
+  --scrim:rgba(10,20,16,.45);
+  --shadow:0 10px 30px rgba(22,33,28,.18);
+  --radius:14px; --gutter:16px;
+  --display:"Bricolage Grotesque","Avenir Next","Helvetica Neue",Arial,sans-serif;
+  --body:"Atkinson Hyperlegible",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111816; --surface:#1A2320; --surface-2:#26312C; --text:#E9EFEA; --muted:#98A79F; --line:#2E3A34;
+    --accent:#5FB0C4; --accent-ink:#0B1A1F; --accent-soft:#1E3A42;
+    --warm-soft:#3B2F12; --warm-ink:#F3D89A; --focus:#E5B04F;
+    --done:#5BC98A; --danger:#E06A5C;
+    --stripe-a:#2A7A90; --stripe-b:#F1EDE0;
+    --scrim:rgba(0,0,0,.6);
+    --shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#1A2320; --surface-2:#26312C; --text:#E9EFEA; --muted:#98A79F; --line:#2E3A34;
+  --accent:#5FB0C4; --accent-ink:#0B1A1F; --accent-soft:#1E3A42;
+  --warm-soft:#3B2F12; --warm-ink:#F3D89A; --focus:#E5B04F;
+  --done:#5BC98A; --danger:#E06A5C;
+  --stripe-a:#2A7A90; --stripe-b:#F1EDE0;
+  --scrim:rgba(0,0,0,.6);
+  --shadow:0 10px 30px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:17px;line-height:1.35;min-height:100vh;padding-block:0 calc(92px + env(safe-area-inset-bottom));overscroll-behavior-y:contain}
+body.nofam{padding-bottom:24px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+svg{display:block}
+[hidden]{display:none!important}
+
+/* ---------- header with market awning ---------- */
+.top{position:sticky;top:0;z-index:5;background:var(--surface);box-shadow:0 1px 0 var(--line)}
+.awning{position:relative;height:calc(14px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);background:repeating-linear-gradient(90deg,var(--stripe-a) 0 22px,var(--stripe-b) 22px 44px);background-clip:content-box}
+.awning::after{content:"";position:absolute;left:0;right:0;top:100%;height:9px;z-index:1;
+  background:
+    radial-gradient(circle at 11px 0,var(--stripe-a) 8.5px,transparent 9.2px) 0 0/44px 9px repeat-x,
+    radial-gradient(circle at 33px 0,var(--stripe-b) 8.5px,transparent 9.2px) 0 0/44px 9px repeat-x}
+.bar{display:flex;align-items:center;gap:12px;max-width:640px;margin-inline:auto;padding:20px var(--gutter) 12px}
+.brand{min-width:0}
+.brand h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02em;margin:0;line-height:1;text-wrap:balance}
+.brand .sub{color:var(--muted);font-size:14.5px;margin-top:5px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.spacer{flex:1}
+.pill{flex:none;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--warm-soft);color:var(--warm-ink)}
+.btn-icon{flex:none;width:44px;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--muted)}
+.btn-icon svg{width:22px;height:22px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round}
+
+/* ---------- main ---------- */
+main{padding-inline:var(--gutter);max-width:640px;margin-inline:auto;display:grid;gap:26px;padding-block:18px 0}
+.sec-head{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+h2{font-family:var(--display);font-weight:700;font-size:21px;margin:0;letter-spacing:-.01em}
+.count{color:var(--muted);font-size:14.5px;font-variant-numeric:tabular-nums}
+.link{background:none;border:0;color:var(--accent);font-weight:700;padding:6px 2px;margin-left:auto;font-size:15.5px}
+.hint{margin:0 0 10px;color:var(--muted);font-size:14.5px}
+
+.add{display:flex;gap:8px;margin-bottom:12px}
+.add input{flex:1;min-width:0;height:50px;border:1.5px solid var(--line);border-radius:14px;padding:0 14px;background:var(--surface);font-size:17px}
+.add input::placeholder{color:var(--muted)}
+.add button{flex:none;width:50px;height:50px;border-radius:14px;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.add button svg{width:22px;height:22px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round}
+
+.group{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+.group+.group{margin-top:10px}
+.group-h{display:flex;align-items:center;gap:8px;padding:9px 14px 4px;font-size:12.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.group-h .link{font-size:13.5px;letter-spacing:0;text-transform:none;padding:2px 0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted));flex:none}
+ul{list-style:none;margin:0;padding:0}
+.item{display:flex;align-items:stretch;border-top:1px solid var(--line)}
+.check{flex:1;display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 6px 8px 14px;background:none;border:0;text-align:left;min-width:0}
+.box{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted);flex:none;display:grid;place-items:center;transition:background-color .15s,border-color .15s}
+.box svg{width:16px;height:16px;opacity:0;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.item.done .box{background:var(--done);border-color:var(--done)}
+.item.done .box svg{opacity:1}
+.name{flex:1;min-width:0;overflow-wrap:anywhere}
+.name small{display:block;color:var(--muted);font-size:13px;text-decoration:none}
+.item.done .name{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
+.qty{flex:none;align-self:center;margin-right:10px;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:14.5px;font-variant-numeric:tabular-nums;color:var(--text);min-height:34px;white-space:nowrap}
+.qty.empty{color:var(--muted)}
+
+.empty{background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--radius);padding:22px 18px;color:var(--muted);text-align:center;font-size:15.5px;text-wrap:balance}
+.empty b{color:var(--text)}
+
+.banner{background:var(--warm-soft);color:var(--warm-ink);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;display:grid;gap:10px}
+.banner strong{font-family:var(--display);font-size:17px}
+.banner .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.banner input{flex:1;min-width:120px;height:44px;border:1.5px solid currentColor;border-radius:10px;padding:0 12px;background:transparent;color:inherit;font-size:17px}
+.banner input::placeholder{color:inherit;opacity:.6}
+.btn-sm{border-radius:10px;padding:8px 13px;font-weight:700;font-size:15px;border:1.5px solid currentColor;background:transparent;color:inherit;min-height:44px}
+.btn-sm.solid{background:var(--warm-ink);color:var(--warm-soft);border-color:var(--warm-ink)}
+
+/* ---------- start screen ---------- */
+.start{background:var(--surface);border-radius:var(--radius);box-shadow:0 0 0 1px var(--line);padding:22px 18px;display:grid;gap:14px}
+.start h2{font-size:24px;text-wrap:balance}
+.start p{margin:0;max-width:52ch}
+.start .btn-primary{width:100%}
+.note{margin:0;color:var(--muted);font-size:14.5px;line-height:1.45}
+
+/* ---------- Stammliste ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 12px 12px}
+.chip{border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--text);padding:8px 14px;font-size:15.5px;min-height:40px;display:inline-flex;align-items:center;gap:6px;max-width:100%;text-align:left}
+.chip span{overflow-wrap:anywhere}
+.chip::before{content:"";width:0;height:0;overflow:hidden}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.chip.on::before{content:"✓";width:auto;height:auto;font-size:13px}
+.editing .chip{border-style:dashed}
+.editing .chip::before{content:"✎";width:auto;height:auto;font-size:14px;color:var(--muted)}
+.editing .chip.on::before{color:inherit}
+.btn-ghost{width:100%;min-height:48px;border-radius:12px;border:1.5px dashed var(--line);background:transparent;font-weight:700;color:var(--accent);margin-top:10px}
+
+/* ---------- dock ---------- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding:10px var(--gutter) calc(10px + env(safe-area-inset-bottom))}
+@supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+  .dock{background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+}
+.dock-in{max-width:640px;margin-inline:auto;display:flex;gap:10px}
+.btn-primary{flex:1;min-height:52px;border-radius:14px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:17px;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:0 16px}
+.btn-primary svg{width:20px;height:20px;stroke:currentColor;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.btn-secondary{min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);padding:0 16px;font-weight:700;font-size:15.5px;color:var(--text)}
+.btn-secondary:disabled{opacity:.4;cursor:default}
+
+/* ---------- sheet ---------- */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:20px 20px 0 0;padding:12px var(--gutter) calc(18px + env(safe-area-inset-bottom));box-shadow:var(--shadow);max-height:90vh;max-height:90dvh;overflow:auto}
+.sheet-in{max-width:640px;margin-inline:auto;display:grid;gap:14px}
+.grip{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 2px}
+.sheet h3{font-family:var(--display);font-size:21px;margin:0;font-weight:700}
+.field{display:grid;gap:6px}
+.field label,.lbl{font-size:12.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select{min-height:48px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;background:var(--bg);font-size:17px;width:100%}
+.field input{-webkit-appearance:none;appearance:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.units{display:flex;flex-wrap:wrap;gap:6px}
+.units button{border-radius:999px;border:1.5px solid var(--line);background:var(--surface);padding:6px 12px;font-size:15px;min-height:38px;color:var(--text)}
+.units button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.toggle{display:flex;align-items:center;gap:12px;font-size:16.5px;min-height:44px}
+.toggle input{width:22px;height:22px;accent-color:var(--accent);margin:0;flex:none}
+.actions{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+.actions .btn-primary{grid-column:1/-1}
+.btn-danger{min-height:48px;border-radius:12px;border:1.5px solid var(--danger);color:var(--danger);background:transparent;font-weight:700;padding:0 10px}
+.btn-plain{min-height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font-weight:700;color:var(--text);padding:0 10px}
+.linkbox{display:flex;gap:8px;align-items:center;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:8px 8px 8px 12px}
+.linkbox code{flex:1;min-width:0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom));z-index:30;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:15px;max-width:calc(100% - 32px);box-shadow:var(--shadow);text-align:center}
+.nofam .toast{bottom:24px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script>
+// Firebase-Zugang für die Live-Liste (Projekt "zettel", Realtime Database in europe-west1).
+// Diese Werte sind öffentlich gedacht – der Schutz liegt in den Datenbank-Regeln und im geheimen Familien-Link.
+window.ZETTEL_CONFIG = {
+  apiKey: "AIzaSyALgRRfV2Oqn4QFdCDALtSYoF50lLG32uM",
+  authDomain: "zettel-40091.firebaseapp.com",
+  databaseURL: "https://zettel-40091-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "zettel-40091",
+  storageBucket: "zettel-40091.firebasestorage.app",
+  messagingSenderId: "106266887017",
+  appId: "1:106266887017:web:5556afee143aeba59933f8"
+};
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="awning" aria-hidden="true"></div>
+  <div class="bar">
+    <div class="brand">
+      <h1>Zettel</h1>
+      <div class="sub" id="sub">Einkaufsliste für die Familie</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill" id="offline" hidden>offline</span>
+    <button class="btn-icon" id="btnSettings" type="button" aria-label="Einstellungen" hidden>
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="var(--surface)"/><circle cx="15" cy="12" r="2" fill="var(--surface)"/><circle cx="8" cy="17" r="2" fill="var(--surface)"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section id="today" aria-labelledby="hToday">
+    <div class="sec-head" id="todayHead" hidden>
+      <h2 id="hToday">Heute</h2>
+      <span class="count" id="todayCount"></span>
+    </div>
+    <form class="add" id="addForm" autocomplete="off" hidden>
+      <input id="addInput" type="text" placeholder="Was fehlt? z. B. 2 kg Kartoffeln" enterkeyhint="done" list="stammSuggest" aria-label="Artikel hinzufügen">
+      <datalist id="stammSuggest"></datalist>
+      <button type="submit" aria-label="Hinzufügen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    </form>
+    <div id="banner"></div>
+    <div id="listGroups"></div>
+  </section>
+
+  <section id="stamm" aria-labelledby="hStamm" hidden>
+    <div class="sec-head">
+      <h2 id="hStamm">Stammliste</h2>
+      <span class="count" id="stammCount"></span>
+      <button class="link" id="btnEditStamm" type="button">Bearbeiten</button>
+    </div>
+    <p class="hint" id="stammHint">Antippen setzt den Artikel auf die Liste, nochmal antippen nimmt ihn wieder runter.</p>
+    <div id="stammGroups"></div>
+    <button class="btn-ghost" id="btnNewStamm" type="button">+ Neuer Stamm-Artikel</button>
+  </section>
+</main>
+
+<footer class="dock" id="dock" hidden>
+  <div class="dock-in">
+    <button class="btn-primary" id="btnShare" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M5 13v6h14v-6"/></svg>
+      Liste schicken
+    </button>
+    <button class="btn-secondary" id="btnClearDone" type="button">Aufräumen</button>
+  </div>
+</footer>
+
+<div id="sheetHost"></div>
+<div id="toastHost"></div>
+
+<script>
+(function(){
+'use strict';
+
+const SDK='https://www.gstatic.com/firebasejs/12.19.0/';
+const CATS=[
+  {id:'obst',name:'Obst & Gemüse',c:'#4C9A3C'},
+  {id:'brot',name:'Brot & Backwaren',c:'#B8772A'},
+  {id:'kuehl',name:'Kühlregal',c:'#3D7DD1'},
+  {id:'fleisch',name:'Fleisch & Fisch',c:'#C4453E'},
+  {id:'vorrat',name:'Vorrat',c:'#8A6A3B'},
+  {id:'tk',name:'Tiefkühl',c:'#5FA9D6'},
+  {id:'getr',name:'Getränke',c:'#2C8C86'},
+  {id:'haus',name:'Haushalt & Drogerie',c:'#7A5BB5'},
+  {id:'sonst',name:'Sonstiges',c:'#7C8782'}
+];
+const CAT_BY=Object.fromEntries(CATS.map(c=>[c.id,c]));
+const UNITS=['Stk','kg','g','l','ml','Pack','Bund','Dose','Fl.'];
+const SEED=[
+  ['Milch','1','l','kuehl'],['Butter','1','Stk','kuehl'],['Eier','10','Stk','kuehl'],['Käse','1','Pack','kuehl'],['Joghurt','4','Stk','kuehl'],['Quark','1','Stk','kuehl'],
+  ['Brot','1','Stk','brot'],['Brötchen','6','Stk','brot'],
+  ['Kartoffeln','2','kg','obst'],['Zwiebeln','1','kg','obst'],['Tomaten','500','g','obst'],['Gurke','1','Stk','obst'],['Paprika','3','Stk','obst'],['Äpfel','1','kg','obst'],['Bananen','1','Bund','obst'],['Zitronen','2','Stk','obst'],
+  ['Hähnchenbrust','500','g','fleisch'],['Hackfleisch','500','g','fleisch'],['Wurst','1','Pack','fleisch'],['Schinken','1','Pack','fleisch'],
+  ['Nudeln','1','Pack','vorrat'],['Reis','1','Pack','vorrat'],['Mehl','1','kg','vorrat'],['Zucker','1','kg','vorrat'],['Öl','1','Fl.','vorrat'],['Kaffee','1','Pack','vorrat'],['Müsli','1','Pack','vorrat'],['Tomaten (Dose)','2','Dose','vorrat'],
+  ['Pizza','2','Stk','tk'],['Fischstäbchen','1','Pack','tk'],
+  ['Wasser','6','Fl.','getr'],['Saft','2','Fl.','getr'],['Bier','6','Fl.','getr'],
+  ['Toilettenpapier','1','Pack','haus'],['Küchenrolle','1','Pack','haus'],['Spülmittel','1','Fl.','haus'],['Zahnpasta','1','Stk','haus'],['Müllbeutel','1','Pack','haus']
+];
+const KEY={fid:'zettel.fid',settings:'zettel.settings',cache:'zettel.cache.'};
+
+/* ---------- storage ---------- */
+function load(k,fb){try{const v=localStorage.getItem(k);return v==null?fb:JSON.parse(v)}catch(e){return fb}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+/* ---------- helpers ---------- */
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function familyId(){const a='abcdefghijklmnopqrstuvwxyz0123456789';let s='';const r=new Uint8Array(20);(crypto.getRandomValues?crypto.getRandomValues(r):r.forEach((_,i)=>r[i]=Math.random()*256));for(const b of r)s+=a[b%a.length];return s}
+function norm(s){return String(s||'').trim().toLowerCase()}
+function cap(s){s=String(s||'').trim();return s?s[0].toUpperCase()+s.slice(1):''}
+function fmtQty(it){const q=String(it.qty||'').trim();if(!q)return '';const u=String(it.unit||'').trim();return u?q+' '+u:q+' Stk'}
+function el(tag,attrs){
+  const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs||{})){
+    if(k==='class')e.className=v;
+    else if(k==='text')e.textContent=v;
+    else if(k==='html')e.innerHTML=v;
+    else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);
+    else if(v!==false&&v!=null)e.setAttribute(k,v);
+  }
+  for(let i=2;i<arguments.length;i++){const kid=arguments[i];if(kid!=null)e.append(kid)}
+  return e;
+}
+const $=s=>document.querySelector(s);
+const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+function catOf(it){return CAT_BY[it.cat]?it.cat:'sonst'}
+function stammByName(name){const n=norm(name);return stamm.find(s=>norm(s.name)===n)}
+function listByName(name){const n=norm(name);return items.filter(i=>norm(i.name)===n)}
+function parseFid(h){const m=String(h||'').match(/[#&]f=([a-z0-9]{16,40})/i);return m?m[1].toLowerCase():''}
+
+let toastTimer=null;
+function toast(msg){
+  const host=$('#toastHost');host.replaceChildren(el('div',{class:'toast',role:'status',text:msg}));
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>host.replaceChildren(),2600);
+}
+
+/* ---------- state ---------- */
+let settings=load(KEY.settings,{name:''});
+if(!settings||typeof settings!=='object')settings={name:''};
+let fid='', backend=null, unsub=null, unsubConn=null, loaded=false;
+let family={}, items=[], stamm=[];
+let editing=false, sheet=null, askedName=false;
+const me=()=>String(settings.name||'').trim();
+const P=()=>'families/'+fid;
+
+/* ---------- backends ---------- */
+async function firebaseBackend(cfg){
+  const [appMod,dbMod]=await Promise.all([import(SDK+'firebase-app.js'),import(SDK+'firebase-database.js')]);
+  const app=appMod.initializeApp(cfg);
+  const db=dbMod.getDatabase(app);
+  return {
+    live:true,
+    subscribe(path,cb,err){return dbMod.onValue(dbMod.ref(db,path),s=>cb(s.val()),err)},
+    set:(p,v)=>dbMod.set(dbMod.ref(db,p),v),
+    update:(p,v)=>dbMod.update(dbMod.ref(db,p),v),
+    remove:p=>dbMod.remove(dbMod.ref(db,p))
+  };
+}
+function localBackend(){
+  const subs=new Map();
+  const split=p=>{const parts=p.split('/').filter(Boolean);return {root:parts.slice(0,2).join('/'),rest:parts.slice(2)}};
+  const read=root=>load('zettel.local:'+root,null);
+  const getAt=(o,rest)=>{for(const k of rest){if(o==null||typeof o!=='object')return null;o=o[k]}return o===undefined?null:o};
+  function setAt(obj,rest,val){
+    if(!rest.length)return val;
+    const out=obj&&typeof obj==='object'?{...obj}:{};
+    const k=rest[0];
+    const next=setAt(out[k],rest.slice(1),val);
+    if(next===null||next===undefined||(typeof next==='object'&&!Object.keys(next).length))delete out[k];else out[k]=next;
+    return out;
+  }
+  function writeRoot(root,obj){save('zettel.local:'+root,obj);for(const [p,set] of subs){const s=split(p);if(s.root!==root)continue;const v=getAt(read(root),s.rest);set.forEach(cb=>cb(v))}}
+  return {
+    live:false,
+    subscribe(p,cb){
+      if(p==='.info/connected'){cb(true);return()=>{}}
+      const s=subs.get(p)||new Set();s.add(cb);subs.set(p,s);
+      const sp=split(p);setTimeout(()=>cb(getAt(read(sp.root),sp.rest)),0);
+      return()=>s.delete(cb);
+    },
+    async set(p,v){const s=split(p);writeRoot(s.root,setAt(read(s.root),s.rest,v))},
+    async update(p,obj){const s=split(p);let o=read(s.root);for(const [k,v] of Object.entries(obj))o=setAt(o,s.rest.concat(k.split('/').filter(Boolean)),v);writeRoot(s.root,o)},
+    async remove(p){return this.set(p,null)}
+  };
+}
+async function getBackend(){
+  if(backend)return backend;
+  const cfg=window.ZETTEL_CONFIG;
+  if(cfg&&cfg.apiKey){
+    try{backend=await firebaseBackend(cfg)}catch(e){console.error('Firebase konnte nicht geladen werden',e);toast('Live-Verbindung nicht möglich – Daten bleiben nur auf diesem Gerät.');backend=localBackend()}
+  }else backend=localBackend();
+  return backend;
+}
+
+/* ---------- family lifecycle ---------- */
+function ingest(val){
+  family=val&&typeof val==='object'?val:{};
+  items=Object.entries(family.items||{}).map(([id,v])=>Object.assign({id},v)).filter(i=>i&&i.name);
+  stamm=Object.entries(family.stamm||{}).map(([id,v])=>Object.assign({id},v)).filter(s=>s&&s.name);
+  items.sort((a,b)=>(a.order||0)-(b.order||0));
+  save(KEY.cache+fid,{items,stamm,meta:family.meta||null});
+  renderAll();
+}
+
+async function openFamily(id){
+  if(unsub){unsub();unsub=null}
+  if(unsubConn){unsubConn();unsubConn=null}
+  fid=id;loaded=false;
+  document.body.classList.remove('nofam');
+  save(KEY.fid,fid);
+  const cached=load(KEY.cache+fid,null);
+  if(cached){family={items:{},stamm:{},meta:cached.meta};items=cached.items||[];stamm=cached.stamm||[];renderAll()}
+  else renderAll();
+  const be=await getBackend();
+  unsub=be.subscribe(P(),val=>{loaded=true;ingest(val)},e=>{console.error(e);toast('Verbindung zur Liste gestört.')});
+  unsubConn=be.subscribe('.info/connected',on=>{$('#offline').hidden=!!on||!be.live});
+}
+
+async function createFamily(){
+  const be=await getBackend();
+  const id=familyId();
+  const seed={};SEED.forEach(s=>{seed[uid()]={name:s[0],qty:s[1],unit:s[2],cat:s[3]}});
+  try{await be.set('families/'+id,{meta:{name:'',createdAt:Date.now()},stamm:seed})}
+  catch(e){console.error(e);toast('Anlegen hat nicht geklappt. Bitte nochmal versuchen.');return}
+  try{history.replaceState(null,'',location.pathname+location.search+'#f='+id)}catch(e){}
+  openFamily(id);
+  toast('Familienliste angelegt – jetzt den Link an die Familie schicken.');
+}
+
+function shareUrl(){return location.origin+location.pathname+location.search+'#f='+fid}
+
+/* ---------- render ---------- */
+function renderAll(){
+  const has=!!fid;
+  $('#todayHead').hidden=!has;$('#addForm').hidden=!has;$('#stamm').hidden=!has;$('#dock').hidden=!has;$('#btnSettings').hidden=!has;
+  document.body.classList.toggle('nofam',!has);
+  if(!has){renderStart();return}
+  renderHeader();renderBanner();renderList();renderStamm();renderDock();
+}
+
+function renderStart(){
+  $('#sub').textContent='Einkaufsliste für die Familie';
+  $('#banner').replaceChildren();$('#listGroups').replaceChildren(
+    el('div',{class:'start'},
+      el('h2',{text:'Eine Liste für die ganze Familie'}),
+      el('p',{text:'Einer legt die Liste an und schickt den Link. Alle anderen öffnen ihn – und was einer antippt oder abhakt, sehen alle sofort.'}),
+      el('button',{class:'btn-primary',type:'button',text:'Familienliste anlegen',onclick:createFamily}),
+      el('p',{class:'note',text:'Hast du schon einen Link von der Familie bekommen? Dann einfach den Link öffnen – hier ist nichts weiter zu tun.'})));
+}
+
+function renderHeader(){
+  const d=new Date();
+  const date=d.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'});
+  const open=items.filter(i=>!i.done).length, done=items.filter(i=>i.done).length;
+  const fam=family.meta&&family.meta.name?family.meta.name+' · ':'';
+  let s=fam+date;
+  if(items.length)s+=' · '+open+' offen'+(done?' · '+done+' im Wagen':'');
+  $('#sub').textContent=s;
+  $('#todayCount').textContent=items.length?items.length+' Artikel':'';
+}
+
+function renderBanner(){
+  const host=$('#banner');host.replaceChildren();
+  if(loaded&&!family.meta&&!items.length&&!stamm.length){
+    host.append(el('div',{class:'banner'},
+      el('strong',{text:'Unter diesem Link gibt es (noch) keine Liste.'}),
+      el('div',{text:'Vielleicht ist der Link unvollständig – oder du legst eine neue Familienliste an.'}),
+      el('div',{class:'row'},el('button',{class:'btn-sm solid',type:'button',text:'Neue Familienliste anlegen',onclick:createFamily}))));
+    return;
+  }
+  if(!me()&&!askedName){
+    const inp=el('input',{type:'text',placeholder:'Dein Vorname',autocapitalize:'words','aria-label':'Dein Vorname'});
+    const ok=()=>{const n=inp.value.trim().slice(0,40);askedName=true;if(n){settings.name=n;save(KEY.settings,settings)}renderBanner()};
+    host.append(el('div',{class:'banner'},
+      el('strong',{text:'Wie heißt du?'}),
+      el('div',{text:'Damit die anderen sehen, wer was abgehakt hat.'}),
+      el('div',{class:'row'},inp,el('button',{class:'btn-sm solid',type:'button',text:'OK',onclick:ok}),el('button',{class:'btn-sm',type:'button',text:'Später',onclick:()=>{askedName=true;renderBanner()}}))));
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ok()}});
+    return;
+  }
+  if(backend&&!backend.live){
+    host.append(el('div',{class:'banner'},el('strong',{text:'Nur auf diesem Gerät'}),el('div',{text:'Der Live-Abgleich ist noch nicht eingerichtet – die Liste bleibt vorerst hier auf dem Handy.'})));
+  }
+}
+
+function itemEl(it){
+  const li=el('li',{class:'item'+(it.done?' done':''),'data-id':it.id});
+  const name=el('span',{class:'name',text:it.name});
+  if(it.done&&it.by)name.append(el('small',{text:it.by}));
+  const check=el('button',{class:'check',type:'button','aria-pressed':String(!!it.done),onclick:()=>toggleDone(it)},el('span',{class:'box',html:CHECK}),name);
+  const q=fmtQty(it);
+  const qty=el('button',{class:'qty'+(q?'':' empty'),type:'button','aria-label':'Bearbeiten: '+it.name,text:q||'Menge',onclick:()=>openEdit('list',it.id)});
+  li.append(check,qty);
+  return li;
+}
+function groupHead(cat,extra){
+  const h=el('div',{class:'group-h'},el('span',{class:'dot',style:'--c:'+cat.c}),el('span',{text:cat.name}));
+  if(extra)h.append(extra);
+  return h;
+}
+function renderList(){
+  const host=$('#listGroups');host.replaceChildren();
+  const open=items.filter(i=>!i.done), done=items.filter(i=>i.done);
+  if(!items.length){
+    host.append(el('div',{class:'empty',html:loaded?'Noch nichts auf dem Zettel.<br>Tipp unten in der <b>Stammliste</b> an, was du brauchst – oder schreib es oben rein.':'Liste wird geladen …'}));
+    return;
+  }
+  for(const cat of CATS){
+    const list=open.filter(i=>catOf(i)===cat.id);
+    if(!list.length)continue;
+    const ul=el('ul');list.forEach(i=>ul.append(itemEl(i)));
+    host.append(el('div',{class:'group'},groupHead(cat),ul));
+  }
+  if(done.length){
+    const ul=el('ul');done.forEach(i=>ul.append(itemEl(i)));
+    const head=el('div',{class:'group-h'},el('span',{class:'dot',style:'--c:var(--done)'}),el('span',{text:'Im Wagen · '+done.length}),
+      el('button',{class:'link',type:'button',text:'Aufräumen',onclick:clearDone}));
+    host.append(el('div',{class:'group'},head,ul));
+  }
+}
+function renderStamm(){
+  const host=$('#stammGroups');host.replaceChildren();
+  const on=new Set(items.map(i=>norm(i.name)));
+  const sorted=stamm.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'de'));
+  for(const cat of CATS){
+    const list=sorted.filter(s=>catOf(s)===cat.id);
+    if(!list.length)continue;
+    const chips=el('div',{class:'chips'});
+    for(const s of list){
+      const isOn=on.has(norm(s.name));
+      chips.append(el('button',{class:'chip'+(isOn?' on':''),type:'button','aria-pressed':String(isOn),
+        onclick:()=>editing?openEdit('stamm',s.id):tapStamm(s)},el('span',{text:s.name})));
+    }
+    host.append(el('div',{class:'group'},groupHead(cat),chips));
+  }
+  $('#stamm').classList.toggle('editing',editing);
+  $('#btnEditStamm').textContent=editing?'Fertig':'Bearbeiten';
+  $('#stammHint').textContent=editing?'Antippen öffnet den Artikel zum Ändern oder Löschen.':'Antippen setzt den Artikel auf die Liste, nochmal antippen nimmt ihn wieder runter.';
+  $('#stammCount').textContent=stamm.length?stamm.length+' Artikel':'';
+  const dl=$('#stammSuggest');dl.replaceChildren();
+  sorted.forEach(s=>dl.append(el('option',{value:s.name})));
+}
+function renderDock(){$('#btnClearDone').disabled=!items.some(i=>i.done)}
+
+/* ---------- actions ---------- */
+function fail(e){console.error(e);toast('Das hat nicht geklappt – bitte nochmal.')}
+function addItem(data){
+  const id=uid();
+  const rec={name:data.name,qty:data.qty||'',unit:data.unit||'',cat:CAT_BY[data.cat]?data.cat:'sonst',done:false,order:Date.now(),by:me()};
+  return backend.set(P()+'/items/'+id,rec).catch(fail);
+}
+function toggleDone(it){backend.update(P()+'/items/'+it.id,{done:!it.done,at:Date.now(),by:me()}).catch(fail)}
+function removeByName(name){
+  const upd={};listByName(name).forEach(i=>{upd[i.id]=null});
+  if(!Object.keys(upd).length)return Promise.resolve();
+  return backend.update(P()+'/items',upd).catch(fail);
+}
+function tapStamm(s){
+  if(listByName(s.name).length)removeByName(s.name);
+  else addItem({name:s.name,qty:s.qty,unit:s.unit,cat:catOf(s)});
+}
+function clearDone(){
+  const done=items.filter(i=>i.done);if(!done.length)return;
+  const upd={};done.forEach(i=>{upd[i.id]=null});
+  backend.update(P()+'/items',upd).then(()=>toast(done.length===1?'1 Artikel aus dem Wagen entfernt':done.length+' Artikel aus dem Wagen entfernt')).catch(fail);
+}
+
+const UNIT_MAP={st:'Stk',stk:'Stk','stück':'Stk',x:'Stk',pack:'Pack',packung:'Pack',bund:'Bund',dose:'Dose',dosen:'Dose',fl:'Fl.',flasche:'Fl.',flaschen:'Fl.',kg:'kg',g:'g',l:'l',ml:'ml'};
+const UNIT_RE='(kg|g|l|ml|stk|st|stück|x|pack|packung|bund|dose|dosen|fl|flasche|flaschen)';
+function parseInput(str){
+  let s=String(str||'').trim().replace(/\s+/g,' ');if(!s)return null;
+  let qty='',unit='';
+  let m=s.match(new RegExp('^(\\d+(?:[.,]\\d+)?)\\s*'+UNIT_RE+'?\\.?\\s+(.+)$','i'));
+  if(m){qty=m[1].replace('.',',');unit=m[2]?UNIT_MAP[m[2].toLowerCase()]||'':'';s=m[3]}
+  else{
+    m=s.match(new RegExp('^(.+?)\\s+(\\d+(?:[.,]\\d+)?)\\s*'+UNIT_RE+'?\\.?$','i'));
+    if(m){s=m[1];qty=m[2].replace('.',',');unit=m[3]?UNIT_MAP[m[3].toLowerCase()]||'':''}
+  }
+  return {name:cap(s),qty,unit};
+}
+function addFromInput(){
+  const inp=$('#addInput');
+  const p=parseInput(inp.value);
+  if(!p||!p.name)return;
+  if(listByName(p.name).length){toast('„'+p.name+'“ steht schon drauf');inp.value='';return}
+  const s=stammByName(p.name);
+  addItem({name:s?s.name:p.name,qty:p.qty||(s?s.qty:''),unit:p.unit||(s?s.unit:''),cat:s?catOf(s):'sonst'});
+  inp.value='';
+}
+
+/* ---------- sheets ---------- */
+function closeSheet(){if(sheet){sheet.remove();sheet=null}}
+function openSheet(build){
+  closeSheet();
+  const scrim=el('div',{class:'scrim',onclick:closeSheet});
+  const panel=el('div',{class:'sheet',role:'dialog','aria-modal':'true'});
+  const inner=el('div',{class:'sheet-in'},el('div',{class:'grip'}));
+  build(inner);
+  panel.append(inner);
+  sheet=el('div');sheet.append(scrim,panel);
+  $('#sheetHost').append(sheet);
+  const first=inner.querySelector('input[type="text"]');
+  if(first&&!first.value)setTimeout(()=>first.focus(),50);
+}
+
+function openEdit(kind,id){
+  const src=kind==='list'?items.find(i=>i.id===id):(id?stamm.find(s=>s.id===id):null);
+  if(!src&&!(kind==='stamm'&&!id))return;
+  const isNew=kind==='stamm'&&!id;
+  const draft={name:src?src.name:'',qty:src?String(src.qty||''):'',unit:src?String(src.unit||''):'',cat:src?catOf(src):'sonst'};
+  const inStamm=kind==='list'?!!stammByName(draft.name):true;
+  const onList=kind==='stamm'&&src?listByName(src.name).length>0:false;
+
+  openSheet(inner=>{
+    inner.append(el('h3',{text:isNew?'Neuer Stamm-Artikel':(kind==='list'?'Artikel auf der Liste':'Stamm-Artikel')}));
+    const fName=el('input',{type:'text',id:'fName',value:draft.name,placeholder:'z. B. Kartoffeln',autocapitalize:'sentences'});
+    inner.append(el('div',{class:'field'},el('label',{for:'fName',text:'Artikel'}),fName));
+
+    const fQty=el('input',{type:'text',id:'fQty',inputmode:'decimal',value:draft.qty,placeholder:'z. B. 2'});
+    const fCat=el('select',{id:'fCat'});
+    CATS.forEach(c=>fCat.append(el('option',{value:c.id,text:c.name,selected:c.id===draft.cat?'selected':null})));
+    inner.append(el('div',{class:'two'},
+      el('div',{class:'field'},el('label',{for:'fQty',text:'Menge'}),fQty),
+      el('div',{class:'field'},el('label',{for:'fCat',text:'Abteilung'}),fCat)));
+
+    const units=el('div',{class:'units',role:'group','aria-label':'Einheit'});
+    let unit=draft.unit;
+    const paint=()=>units.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.u===unit)));
+    UNITS.forEach(u=>units.append(el('button',{type:'button','data-u':u,text:u,onclick:()=>{unit=(unit===u?'':u);paint()}})));
+    paint();
+    inner.append(el('div',{class:'field'},el('span',{class:'lbl',text:'Einheit'}),units));
+
+    const tgl=el('input',{type:'checkbox',id:'fTgl'});
+    let tglText='';
+    if(kind==='list'){tgl.checked=inStamm;tglText='In der Stammliste behalten'}
+    else if(!isNew){tgl.checked=onList;tglText='Heute auf der Liste'}
+    else{tgl.checked=false;tglText='Gleich auf die Liste setzen'}
+    inner.append(el('label',{class:'toggle',for:'fTgl'},tgl,el('span',{text:tglText})));
+
+    const actions=el('div',{class:'actions'});
+    actions.append(el('button',{class:'btn-primary',type:'button',text:'Speichern',onclick:()=>{
+      const name=cap(fName.value);if(!name){fName.focus();return}
+      const qty=fQty.value.trim().replace('.',',');const cat=fCat.value;
+      const fields={name,qty,unit,cat};
+      const ops=[];
+      if(kind==='list'){
+        ops.push(backend.update(P()+'/items/'+src.id,fields));
+        const existing=stammByName(src.name)||stammByName(name);
+        if(tgl.checked){ops.push(existing?backend.update(P()+'/stamm/'+existing.id,fields):backend.set(P()+'/stamm/'+uid(),fields))}
+        else if(existing){ops.push(backend.remove(P()+'/stamm/'+existing.id))}
+      }else{
+        let entryId=src?src.id:null;
+        const oldName=src?src.name:name;
+        if(isNew){const dup=stammByName(name);entryId=dup?dup.id:uid()}
+        ops.push(backend.set(P()+'/stamm/'+entryId,fields));
+        const present=listByName(oldName);
+        if(tgl.checked){
+          if(present.length){const upd={};present.forEach(i=>{upd[i.id+'/name']=name;upd[i.id+'/qty']=qty;upd[i.id+'/unit']=unit;upd[i.id+'/cat']=cat});ops.push(backend.update(P()+'/items',upd))}
+          else ops.push(addItem(fields));
+        }else if(present.length){ops.push(removeByName(oldName))}
+      }
+      Promise.all(ops).catch(fail);
+      closeSheet();
+    }}));
+    if(!isNew){
+      actions.append(el('button',{class:'btn-danger',type:'button',text:kind==='list'?'Von der Liste nehmen':'Aus Stammliste löschen',onclick:()=>{
+        (kind==='list'?backend.remove(P()+'/items/'+src.id):backend.remove(P()+'/stamm/'+src.id)).catch(fail);
+        closeSheet();
+      }}));
+    }
+    actions.append(el('button',{class:'btn-plain',type:'button',text:'Abbrechen',onclick:closeSheet}));
+    inner.append(actions);
+  });
+}
+
+function openSettings(){
+  openSheet(inner=>{
+    inner.append(el('h3',{text:'Einstellungen'}));
+    const fName=el('input',{type:'text',id:'sName',value:settings.name||'',placeholder:'z. B. Martin',autocapitalize:'words'});
+    inner.append(el('div',{class:'field'},el('label',{for:'sName',text:'Mein Vorname (steht bei abgehakten Sachen)'}),fName));
+    const fFam=el('input',{type:'text',id:'sFam',value:(family.meta&&family.meta.name)||'',placeholder:'z. B. Familie Francuz',autocapitalize:'words'});
+    inner.append(el('div',{class:'field'},el('label',{for:'sFam',text:'Name der Liste'}),fFam));
+
+    const url=shareUrl();
+    const box=el('div',{class:'linkbox'},el('code',{text:url}),
+      el('button',{class:'btn-sm',type:'button',text:'Kopieren',onclick:()=>{
+        if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(()=>toast('Link kopiert'),()=>toast('Kopieren hat nicht geklappt.'));
+      }}));
+    inner.append(el('div',{class:'field'},el('span',{class:'lbl',text:'Link für die Familie'}),box));
+    inner.append(el('p',{class:'note',html:'<b>Als App aufs iPhone:</b> Diesen Link in Safari öffnen, unten das Teilen-Symbol antippen → „Zum Home-Bildschirm“. Dann liegt „Zettel“ wie eine App auf dem Bildschirm – bei jedem in der Familie.'}));
+
+    const clr=el('button',{class:'btn-danger',type:'button',text:'Ganze Liste leeren'});
+    let armed=false;
+    clr.addEventListener('click',()=>{
+      if(!armed){armed=true;clr.textContent='Wirklich alles leeren? Nochmal tippen';return}
+      backend.remove(P()+'/items').then(()=>toast('Liste geleert')).catch(fail);closeSheet();
+    });
+    const actions=el('div',{class:'actions'});
+    actions.append(el('button',{class:'btn-primary',type:'button',text:'Speichern',onclick:()=>{
+      settings.name=fName.value.trim().slice(0,40);save(KEY.settings,settings);
+      const fam=fFam.value.trim().slice(0,60);
+      if(fam!==((family.meta&&family.meta.name)||''))backend.update(P()+'/meta',{name:fam}).catch(fail);
+      closeSheet();renderAll();
+    }}));
+    actions.append(clr);
+    actions.append(el('button',{class:'btn-plain',type:'button',text:'Abbrechen',onclick:closeSheet}));
+    inner.append(actions);
+  });
+}
+
+/* ---------- share ---------- */
+function shareText(){
+  const d=new Date();
+  const date=d.toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'numeric'});
+  const fam=family.meta&&family.meta.name?' ('+family.meta.name+')':'';
+  if(!items.length)return 'Unsere Einkaufsliste „Zettel“'+fam+': Link öffnen, dann in Safari Teilen → „Zum Home-Bildschirm“.';
+  const lines=items.map(i=>(i.done?'☑ ':'☐ ')+i.name+(fmtQty(i)?' – '+fmtQty(i):''));
+  return 'Einkauf '+date+fam+'\n'+lines.join('\n')+'\n\nLive abhaken:';
+}
+function share(){
+  const text=shareText(), url=shareUrl();
+  if(navigator.share){
+    navigator.share({title:'Einkaufsliste',text:text,url:url}).catch(e=>{if(e&&e.name==='AbortError')return;copyAll(text,url)});
+  }else copyAll(text,url);
+}
+function copyAll(text,url){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text+'\n'+url).then(()=>toast('Liste kopiert – jetzt in eine Nachricht einfügen.'),()=>toast('Kopieren hat nicht geklappt.'));
+  }else toast('Teilen wird in diesem Browser nicht unterstützt.');
+}
+
+/* ---------- wire up ---------- */
+$('#addForm').addEventListener('submit',e=>{e.preventDefault();addFromInput()});
+$('#btnEditStamm').addEventListener('click',()=>{editing=!editing;renderStamm()});
+$('#btnNewStamm').addEventListener('click',()=>openEdit('stamm',null));
+$('#btnShare').addEventListener('click',share);
+$('#btnClearDone').addEventListener('click',clearDone);
+$('#btnSettings').addEventListener('click',openSettings);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+window.addEventListener('hashchange',()=>{const h=parseFid(location.hash);if(h&&h!==fid)openFamily(h)});
+
+(function boot(){
+  const fromHash=parseFid(location.hash);
+  const stored=load(KEY.fid,'');
+  const id=fromHash||stored;
+  if(id){
+    if(!fromHash){try{history.replaceState(null,'',location.pathname+location.search+'#f='+id)}catch(e){}}
+    openFamily(id);
+  }else{
+    document.body.classList.add('nofam');
+    renderAll();
+  }
+})();
+})();
+</script>
+</body>
+</html>
