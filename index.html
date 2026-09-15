@@ -2,12 +2,12 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>Zettel</title>
+<title>Einkaufszettel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Zettel">
+<meta name="apple-mobile-web-app-title" content="Einkaufszettel">
 <meta name="theme-color" content="#1E5C6E">
 <meta name="description" content="Einkaufsliste für die Familie – live auf allen iPhones.">
 <link rel="apple-touch-icon" href="icon.png">
@@ -196,7 +196,7 @@ window.ZETTEL_CONFIG = {
   <div class="awning" aria-hidden="true"></div>
   <div class="bar">
     <div class="brand">
-      <h1>Zettel</h1>
+      <h1>Einkaufszettel</h1>
       <div class="sub" id="sub">Einkaufsliste für die Familie</div>
     </div>
     <div class="spacer"></div>
@@ -665,7 +665,7 @@ function openSettings(){
         if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(()=>toast('Link kopiert'),()=>toast('Kopieren hat nicht geklappt.'));
       }}));
     inner.append(el('div',{class:'field'},el('span',{class:'lbl',text:'Link für die Familie'}),box));
-    inner.append(el('p',{class:'note',html:'<b>Als App aufs iPhone:</b> Diesen Link in Safari öffnen, unten das Teilen-Symbol antippen → „Zum Home-Bildschirm“. Dann liegt „Zettel“ wie eine App auf dem Bildschirm – bei jedem in der Familie.'}));
+    inner.append(el('p',{class:'note',html:'<b>Als App aufs iPhone:</b> Diesen Link in Safari öffnen, unten das Teilen-Symbol antippen → „Zum Home-Bildschirm“. Dann liegt „Einkaufszettel“ wie eine App auf dem Bildschirm – bei jedem in der Familie.'}));
 
     const clr=el('button',{class:'btn-danger',type:'button',text:'Ganze Liste leeren'});
     let armed=false;
@@ -691,7 +691,7 @@ function shareText(){
   const d=new Date();
   const date=d.toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'numeric'});
   const fam=family.meta&&family.meta.name?' ('+family.meta.name+')':'';
-  if(!items.length)return 'Unsere Einkaufsliste „Zettel“'+fam+': Link öffnen, dann in Safari Teilen → „Zum Home-Bildschirm“.';
+  if(!items.length)return 'Unser „Einkaufszettel“'+fam+': Link öffnen, dann in Safari Teilen → „Zum Home-Bildschirm“.';
   const lines=items.map(i=>(i.done?'☑ ':'☐ ')+i.name+(fmtQty(i)?' – '+fmtQty(i):''));
   return 'Einkauf '+date+fam+'\n'+lines.join('\n')+'\n\nLive abhaken:';
 }
