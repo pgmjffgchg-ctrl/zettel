@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anrufliste</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Anrufliste">
+<meta name="theme-color" content="#1E5C6E">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon-180.png">
+<style>
+:root{
+  --petrol:#1E5C6E; --petrol-d:#14444f; --petrol-l:#2b7a90;
+  --bg:#F2F3F4; --card:#FFFFFF; --ink:#15181B; --mute:#6A7176;
+  --line:#E2E5E7; --chip:#F1F3F4;
+  --gruen:#1F7A47; --rot:#B23A28; --gelb:#A3760F;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0F1214; --card:#1A1E21; --ink:#EAECEE; --mute:#98A0A6;
+         --line:#272C30; --chip:#22272A; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;
+  padding-bottom:calc(76px + var(--safe-b));
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- Kopf ---------- */
+.kopf{
+  position:sticky;top:0;z-index:30;background:var(--petrol);color:#fff;
+  padding:calc(12px + var(--safe-t)) 18px 14px;
+  display:flex;align-items:flex-end;gap:12px;
+}
+.kopf .t{flex:1;min-width:0}
+.kopf h1{margin:0;font-size:27px;font-weight:700;letter-spacing:-.02em}
+.kopf .sub{font-size:13px;opacity:.82;margin-top:3px}
+.gear{
+  flex:none;width:40px;height:40px;border-radius:11px;border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.12);color:#fff;font-size:18px;cursor:pointer;
+}
+main{padding:16px 13px 0;max-width:720px;margin:0 auto}
+
+/* ---------- Abschnitt ---------- */
+.sec{margin:0 0 20px}
+.sec h2{
+  font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--mute);margin:0 0 9px;padding:0 3px;display:flex;gap:8px;align-items:center;
+}
+.sec h2 .n{
+  background:var(--chip);border-radius:999px;padding:1px 8px;font-size:11.5px;
+  letter-spacing:0;color:var(--mute);
+}
+
+/* ---------- Karte ---------- */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:15px;
+  margin-bottom:11px;overflow:hidden;position:relative;
+  border-left:4px solid var(--petrol);
+}
+.card.spaeter{border-left-color:#C2C8CC}
+.card.woche{border-left-color:var(--petrol-l)}
+.card.done{border-left-color:var(--gruen);opacity:.72}
+.in{padding:13px 14px 14px}
+.zeile1{display:flex;gap:10px;align-items:flex-start;margin-bottom:2px}
+.kunde{flex:1;min-width:0;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.reg{
+  flex:none;font-size:11px;color:var(--mute);background:var(--chip);
+  border-radius:7px;padding:3px 7px;white-space:nowrap;
+}
+.person{color:var(--mute);font-size:14px}
+.wannTag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;
+  color:var(--petrol);background:rgba(30,92,110,.1);border-radius:6px;
+  padding:2px 7px;margin-top:7px;
+}
+.card.done .wannTag{color:var(--gruen);background:rgba(31,122,71,.12)}
+
+/* ---------- Aktionen ---------- */
+.akt{display:flex;gap:9px;margin-top:12px}
+.tel{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:9px;
+  padding:14px 10px;border-radius:12px;background:var(--petrol);color:#fff;
+  text-decoration:none;font-size:19px;font-weight:700;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;
+}
+.tel:active{background:var(--petrol-d)}
+.tel svg{flex:none;width:18px;height:18px;fill:#fff;opacity:.92}
+.notiz{
+  flex:none;padding:14px 15px;border-radius:12px;border:1.5px solid var(--line);
+  background:var(--chip);color:var(--ink);font-size:14.5px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:7px;
+}
+.notiz svg{width:17px;height:17px;fill:var(--mute)}
+.beleg{font-size:11.5px;color:var(--mute);text-align:center;margin-top:6px}
+
+/* ---------- Text ---------- */
+.thema{font-size:14.5px;margin-top:12px}
+details{margin-top:9px}
+summary{list-style:none;cursor:pointer;font-size:12.5px;color:var(--petrol);font-weight:700}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸ "}
+details[open] summary::before{content:"▾ "}
+.grund{font-size:13.5px;color:var(--mute);margin-top:6px}
+
+/* ---------- Ergebnis ---------- */
+.erg{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.ergkopf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--mute)}
+.pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+.pill.ok{background:rgba(31,122,71,.14);color:var(--gruen)}
+.pill.no{background:rgba(178,58,40,.14);color:var(--rot)}
+.pill.rr{background:rgba(163,118,15,.16);color:var(--gelb)}
+.ergtext{font-size:14px;margin-top:7px;white-space:pre-wrap}
+.offenMark{font-size:11.5px;color:var(--gelb);margin-top:6px;font-weight:700}
+
+.leer{
+  text-align:center;color:var(--mute);font-size:14.5px;
+  padding:30px 18px;border:1px dashed var(--line);border-radius:15px;background:var(--card);
+}
+
+/* ---------- Fuss ---------- */
+.foot{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  background:linear-gradient(to top,var(--bg) 60%,transparent);
+  padding:10px 13px calc(11px + var(--safe-b));
+  display:flex;gap:9px;max-width:720px;margin:0 auto;
+}
+.btn{
+  flex:1;border:none;border-radius:12px;padding:15px 12px;font-size:16px;font-weight:700;
+  background:var(--petrol);color:#fff;cursor:pointer;font-family:inherit;
+}
+.btn.gh{flex:0 0 auto;background:var(--chip);color:var(--mute);border:1px solid var(--line)}
+.btn:active{opacity:.9}
+
+/* ---------- Blatt ---------- */
+.bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.bg.on{display:flex}
+.sheet{
+  background:var(--card);width:100%;max-width:560px;border-radius:19px 19px 0 0;
+  padding:17px 17px calc(18px + var(--safe-b));max-height:92vh;overflow:auto;
+}
+.sheet h3{margin:0 0 2px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.sheet .who{color:var(--mute);font-size:13.5px;margin-bottom:15px}
+.lb{display:block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--mute);margin:0 0 7px 2px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.opt{
+  border:1.5px solid var(--line);background:var(--chip);color:var(--ink);border-radius:11px;
+  padding:13px 8px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.opt.on{border-color:var(--petrol);background:var(--petrol);color:#fff}
+textarea,input[type=text]{
+  width:100%;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:12px;padding:13px;font-size:16px;font-family:inherit;line-height:1.45;
+}
+textarea{min-height:132px;resize:vertical}
+textarea:focus,input[type=text]:focus{outline:none;border-color:var(--petrol)}
+.hint{font-size:12.5px;color:var(--mute);margin:7px 2px 16px;display:flex;gap:7px;align-items:flex-start}
+.hint svg{flex:none;width:15px;height:15px;fill:var(--mute);margin-top:2px}
+.wv{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:17px}
+.wvb{
+  border:1.5px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;
+  padding:9px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.wvb.on{border-color:var(--petrol);background:var(--petrol);color:#fff}
+.row{display:flex;gap:9px}
+.row .btn{flex:1}
+.link{background:none;border:none;color:var(--petrol);font-size:14px;font-weight:700;
+      cursor:pointer;padding:13px 4px;font-family:inherit;display:block;width:100%}
+.warn{background:rgba(163,118,15,.12);border:1px solid rgba(163,118,15,.3);
+      border-radius:11px;padding:11px 12px;font-size:13px;margin:0 0 15px}
+
+/* ---------- Tor ---------- */
+#tor{position:fixed;inset:0;z-index:60;background:var(--bg);display:none;
+     align-items:center;justify-content:center;padding:24px}
+#tor.on{display:flex}
+.torbox{width:100%;max-width:370px;text-align:center}
+.torbox .logo{width:72px;height:72px;border-radius:17px;background:var(--petrol);
+  margin:0 auto 15px;display:flex;align-items:center;justify-content:center}
+.torbox .logo svg{width:39px;height:39px;fill:#fff}
+.torbox h2{font-size:24px;margin:0 0 6px;font-weight:700;letter-spacing:-.02em}
+.torbox p{color:var(--mute);font-size:14px;margin:0 0 18px}
+.torbox input{margin-bottom:12px;text-align:center}
+.stat{text-align:center;font-size:12px;color:var(--mute);min-height:18px;padding:2px 0 12px}
+.stat b{color:var(--gruen)} .stat i{color:var(--gelb);font-style:normal}
+</style>
+</head>
+<body>
+
+<div class="kopf">
+  <div class="t">
+    <h1>Anrufliste</h1>
+    <div class="sub" id="sub">wird geladen …</div>
+  </div>
+  <button class="gear" id="gear" aria-label="Einstellungen">&#9881;</button>
+</div>
+
+<main id="app"></main>
+<div class="stat" id="stat"></div>
+
+<div class="foot">
+  <button class="btn" id="share">Tagesergebnis schicken</button>
+  <button class="btn gh" id="toggleDone">Erledigte</button>
+</div>
+
+<!-- Nach dem Gespräch -->
+<div class="bg" id="sb-erg">
+  <div class="sheet">
+    <h3 id="erg-t">Nach dem Gespräch</h3>
+    <div class="who" id="erg-w"></div>
+
+    <span class="lb">Wie war's</span>
+    <div class="opts">
+      <button class="opt" data-c="erreicht">Erreicht</button>
+      <button class="opt" data-c="nicht">Nicht erreicht</button>
+      <button class="opt" data-c="rueckruf">Rückruf vereinbart</button>
+      <button class="opt" data-c="erledigt">Sache erledigt</button>
+    </div>
+
+    <span class="lb">Gesprächsnotiz</span>
+    <textarea id="erg-x" placeholder="Einfach reden statt tippen — Mikrofon auf der Tastatur antippen."
+              autocapitalize="sentences" autocorrect="on"></textarea>
+    <div class="hint">
+      <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+      <span>Diktieren geht: Mikrofon unten rechts auf der iPhone-Tastatur. Was hier steht, wird beim nächsten Postfach-Durchgang zur portatour-Notiz und ins Vorgangsregister übernommen.</span>
+    </div>
+
+    <span class="lb">Wiedervorlage</span>
+    <div class="wv">
+      <button class="wvb" data-w="0">keine</button>
+      <button class="wvb" data-w="1">morgen</button>
+      <button class="wvb" data-w="3">in 3 Tagen</button>
+      <button class="wvb" data-w="7">nächste Woche</button>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="erg-ok">Speichern</button>
+      <button class="btn gh" id="erg-no">Abbrechen</button>
+    </div>
+    <button class="link" id="erg-offen" style="display:none">Wieder auf offen setzen</button>
+  </div>
+</div>
+
+<!-- Einstellungen -->
+<div class="bg" id="sb-set">
+  <div class="sheet">
+    <h3>Einstellungen</h3>
+    <div class="who">Anrufliste · EKO-OKNA</div>
+    <span class="lb">Wer hakt ab</span>
+    <input type="text" id="set-name" placeholder="Martin" autocomplete="off" style="margin-bottom:15px">
+    <div class="warn">
+      Hier stehen Kundendaten. Der Zugangscode ist der Schlüssel — die Adresse allein zeigt
+      nichts. Code bitte nicht weitergeben.
+    </div>
+    <div class="row">
+      <button class="btn" id="set-ok">Fertig</button>
+      <button class="btn gh" id="set-out">Abmelden</button>
+    </div>
+    <button class="link" id="set-copy">Adresse der App kopieren</button>
+  </div>
+</div>
+
+<!-- Zugang -->
+<div id="tor">
+  <div class="torbox">
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></div>
+    <h2>Anrufliste</h2>
+    <p>Einmalig den Zugangscode eingeben.<br>Danach bleibt er auf diesem Gerät.</p>
+    <input type="text" id="tor-x" placeholder="anruf-…" autocomplete="off"
+           autocapitalize="none" autocorrect="off" spellcheck="false">
+    <button class="btn" id="tor-ok" style="width:100%">Öffnen</button>
+    <div class="who" id="tor-msg" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<script>
+window.ANRUF_CONFIG = {
+  apiKey:"AIzaSyALgRRfV2Oqn4QFdCDALtSYoF50lLG32uM",
+  authDomain:"zettel-40091.firebaseapp.com",
+  databaseURL:"https://zettel-40091-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"zettel-40091",
+  storageBucket:"zettel-40091.firebasestorage.app",
+  messagingSenderId:"106266887017",
+  appId:"1:106266887017:web:5556afee143aeba59933f8"
+};
+</script>
+
+<script type="module">
+const CFG = window.ANRUF_CONFIG;
+const LS = { code:"anruf.code", lid:"anruf.lid", name:"anruf.name", showDone:"anruf.showDone" };
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let LID=null, DB=null, DATA={}, LOCAL=false;
+let sheetId=null, sheetCode=null, sheetWv=0;
+let showDone = localStorage.getItem(LS.showDone)==="1";
+
+const norm = c => String(c||"").trim().toLowerCase().replace(/\s+/g,"");
+async function lidOf(code){
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(norm(code)));
+  return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,"0")).join("").slice(0,24);
+}
+
+const TAG=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const MON=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const iso   = d => new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const heute = () => iso(new Date());
+function plus(n){ const d=new Date(); d.setDate(d.getDate()+n); return iso(d); }
+function dLabel(s){
+  const d=new Date(s+"T12:00:00"); if(isNaN(d)) return s;
+  return TAG[d.getDay()]+", "+d.getDate()+". "+MON[d.getMonth()].slice(0,3)+".";
+}
+const uhr = ts => { const d=new Date(ts); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+
+function localGet(){ try{ return JSON.parse(localStorage.getItem("anruf.data."+LID)||"{}"); }catch(e){ return {}; } }
+function localSet(o){ localStorage.setItem("anruf.data."+LID, JSON.stringify(o)); }
+
+async function speichern(id, patch){
+  DATA[id] = Object.assign({}, DATA[id], patch); render();
+  if(LOCAL){ const o=localGet(); o[id]=DATA[id]; localSet(o); return; }
+  try{
+    const { ref, update } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js");
+    await update(ref(DB,"calls/"+LID+"/items/"+id), patch);
+  }catch(e){ meldung("Nicht gespeichert — keine Verbindung", true); }
+}
+
+function gruppe(it){
+  if(it.status==="erledigt") return "erledigt";
+  const w = it.wann||"heute";
+  if(w==="heute") return "heute";
+  if(w==="woche") return "woche";
+  if(w<=heute())  return "heute";
+  return "spaeter";
+}
+const TITEL={heute:"Heute",woche:"Diese Woche",spaeter:"Später",erledigt:"Erledigt"};
+const PHONE='<svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>';
+const PEN='<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+
+function karte(id,it,g){
+  const done = it.status==="erledigt";
+  const tel  = String(it.tel||"").replace(/[^\d+]/g,"");
+  let tag = "";
+  if(done)            tag = "erledigt "+(it.at?uhr(it.at)+" Uhr":"");
+  else if(g==="spaeter" && it.wann && it.wann.length===10) tag = "ab "+dLabel(it.wann);
+  else if(it.wannText) tag = it.wannText;
+
+  let ergHtml="";
+  if(done){
+    const m={erreicht:["ok","Erreicht"],nicht:["no","Nicht erreicht"],
+             rueckruf:["rr","Rückruf vereinbart"],erledigt:["ok","Sache erledigt"]}[it.ergebnisCode]||["ok","Erledigt"];
+    ergHtml='<div class="erg"><div class="ergkopf"><span class="pill '+m[0]+'">'+m[1]+'</span>'
+      +(it.by?'<span>'+esc(it.by)+'</span>':'')+'</div>'
+      +(it.notiz?'<div class="ergtext">'+esc(it.notiz)+'</div>':'')
+      +(it.uebernommen?'':'<div class="offenMark">wartet auf Übernahme in portatour und Register</div>')
+      +'</div>';
+  }
+  return '<div class="card '+g+(done?" done":"")+'" data-id="'+id+'"><div class="in">'
+    + '<div class="zeile1"><div class="kunde">'+esc(it.kunde)+'</div>'
+    +   (it.register?'<span class="reg">'+esc(it.register)+'</span>':'')+'</div>'
+    + (it.person?'<div class="person">'+esc(it.person)+'</div>':'')
+    + (tag?'<div class="wannTag">'+esc(tag)+'</div>':'')
+    + '<div class="akt">'
+    +   (tel?'<a class="tel" href="tel:'+esc(tel)+'">'+PHONE+esc(it.telLabel||it.tel)+'</a>':'')
+    +   '<button class="notiz" data-notiz="'+id+'">'+PEN+(done?'Notiz':'Erledigt')+'</button>'
+    + '</div>'
+    + (tel&&it.belegquelle?'<div class="beleg">'+esc(it.belegquelle)+'</div>':'')
+    + (it.thema?'<div class="thema">'+esc(it.thema)+'</div>':'')
+    + (it.grund?'<details><summary>Warum Anruf und nicht Mail</summary><div class="grund">'+esc(it.grund)+'</div></details>':'')
+    + ergHtml
+    + '</div></div>';
+}
+
+function render(){
+  const ids = Object.keys(DATA).filter(k=>DATA[k]&&DATA[k].kunde);
+  ids.sort((a,b)=>(DATA[a].order||0)-(DATA[b].order||0));
+  const B={heute:[],woche:[],spaeter:[],erledigt:[]};
+  ids.forEach(id=>B[gruppe(DATA[id])].push(id));
+
+  let html="";
+  ["heute","woche","spaeter"].forEach(g=>{
+    if(!B[g].length) return;
+    html+='<div class="sec"><h2>'+TITEL[g]+'<span class="n">'+B[g].length+'</span></h2>'
+        + B[g].map(id=>karte(id,DATA[id],g)).join("")+'</div>';
+  });
+  if(!B.heute.length&&!B.woche.length&&!B.spaeter.length)
+    html+='<div class="leer">Keine offenen Anrufe.<br>Die Liste füllt sich beim nächsten Postfach-Durchgang.</div>';
+  if(showDone&&B.erledigt.length)
+    html+='<div class="sec"><h2>Erledigt<span class="n">'+B.erledigt.length+'</span></h2>'
+        + B.erledigt.map(id=>karte(id,DATA[id],"erledigt")).join("")+'</div>';
+  $("#app").innerHTML=html;
+
+  const d=new Date();
+  $("#sub").textContent = TAG[d.getDay()]+", "+d.getDate()+". "+MON[d.getMonth()]
+    +" · "+B.heute.length+" heute"+(B.erledigt.length?" · "+B.erledigt.length+" erledigt":"");
+  $("#toggleDone").textContent = showDone?"Erledigte aus":"Erledigte";
+  $$("[data-notiz]").forEach(b=>b.onclick=()=>oeffne(b.dataset.notiz));
+}
+
+function meldung(t,warn){
+  $("#stat").innerHTML = warn?'<i>'+esc(t)+'</i>':'<b>'+esc(t)+'</b>';
+  if(!warn) setTimeout(()=>{ if($("#stat").textContent===t) $("#stat").textContent=""; },2600);
+}
+
+/* ---------- Blatt ---------- */
+function oeffne(id){
+  const it=DATA[id]; if(!it) return;
+  sheetId=id; sheetCode=it.ergebnisCode||null; sheetWv=0;
+  $("#erg-t").textContent = it.status==="erledigt"?"Notiz bearbeiten":"Nach dem Gespräch";
+  $("#erg-w").textContent = it.kunde+(it.person?" · "+it.person:"");
+  $("#erg-x").value = it.notiz||"";
+  $$("#sb-erg .opt").forEach(o=>o.classList.toggle("on",o.dataset.c===sheetCode));
+  $$("#sb-erg .wvb").forEach(o=>o.classList.toggle("on",o.dataset.w==="0"));
+  $("#erg-offen").style.display = it.status==="erledigt"?"block":"none";
+  $("#sb-erg").classList.add("on");
+}
+const zu = () => { $("#sb-erg").classList.remove("on"); sheetId=null; };
+
+$$("#sb-erg .opt").forEach(o=>o.onclick=()=>{
+  sheetCode=o.dataset.c; $$("#sb-erg .opt").forEach(x=>x.classList.toggle("on",x===o));
+});
+$$("#sb-erg .wvb").forEach(o=>o.onclick=()=>{
+  sheetWv=+o.dataset.w; $$("#sb-erg .wvb").forEach(x=>x.classList.toggle("on",x===o));
+});
+$("#erg-ok").onclick=()=>{
+  if(!sheetId) return;
+  const p={ status:"erledigt", ergebnisCode:sheetCode||"erledigt",
+            notiz:$("#erg-x").value.trim(), by:localStorage.getItem(LS.name)||"Martin",
+            at:Date.now(), uebernommen:false };
+  if(sheetWv>0){ p.status="offen"; p.wann=plus(sheetWv); }
+  speichern(sheetId,p); zu();
+  meldung(sheetWv>0 ? "Notiz gespeichert, Wiedervorlage "+dLabel(plus(sheetWv)) : "Gespeichert");
+};
+$("#erg-no").onclick=zu;
+$("#erg-offen").onclick=()=>{ if(sheetId){ speichern(sheetId,{status:"offen",ergebnisCode:null,at:null,uebernommen:false}); zu(); } };
+$("#sb-erg").onclick=e=>{ if(e.target.id==="sb-erg") zu(); };
+
+/* ---------- Einstellungen ---------- */
+$("#gear").onclick=()=>{ $("#set-name").value=localStorage.getItem(LS.name)||""; $("#sb-set").classList.add("on"); };
+$("#set-ok").onclick=()=>{ localStorage.setItem(LS.name,$("#set-name").value.trim()||"Martin"); $("#sb-set").classList.remove("on"); };
+$("#set-out").onclick=()=>{
+  if(!confirm("Abmelden? Der Zugangscode muss dann neu eingegeben werden.")) return;
+  localStorage.removeItem(LS.code); localStorage.removeItem(LS.lid); location.reload();
+};
+$("#set-copy").onclick=async()=>{
+  try{ await navigator.clipboard.writeText(location.href.split("#")[0]); meldung("Adresse kopiert"); }
+  catch(e){ meldung("Kopieren ging nicht",true); }
+};
+$("#sb-set").onclick=e=>{ if(e.target.id==="sb-set") $("#sb-set").classList.remove("on"); };
+$("#toggleDone").onclick=()=>{ showDone=!showDone; localStorage.setItem(LS.showDone,showDone?"1":"0"); render(); };
+
+/* ---------- Tagesergebnis ---------- */
+$("#share").onclick=async()=>{
+  const d=new Date();
+  const erl=Object.values(DATA).filter(x=>x&&x.status==="erledigt"&&x.at&&iso(new Date(x.at))===heute());
+  const off=Object.values(DATA).filter(x=>x&&x.status!=="erledigt"&&gruppe(x)==="heute");
+  const W={erreicht:"erreicht",nicht:"nicht erreicht",rueckruf:"Rückruf vereinbart",erledigt:"erledigt"};
+  let t="Anrufliste "+d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear()+"\n\n";
+  t += erl.length ? "Erledigt:\n"+erl.map(x=>"• "+x.kunde+" — "+(W[x.ergebnisCode]||"erledigt")
+        +(x.notiz?"\n  "+x.notiz.replace(/\n/g,"\n  "):"")).join("\n")+"\n\n"
+      : "Heute noch nichts erledigt.\n\n";
+  if(off.length) t+="Offen:\n"+off.map(x=>"• "+x.kunde).join("\n");
+  try{ await navigator.share({title:"Anrufliste",text:t}); }
+  catch(e){ try{ await navigator.clipboard.writeText(t); meldung("In die Zwischenablage kopiert"); }catch(_){}}
+};
+
+/* ---------- Verbinden ---------- */
+async function verbinden(){
+  if(!CFG||!CFG.databaseURL){ LOCAL=true; DATA=localGet(); render(); meldung("Nur auf diesem Gerät",true); return; }
+  try{
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js");
+    const { getDatabase, ref, onValue } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js");
+    DB = getDatabase(initializeApp(CFG));
+    onValue(ref(DB,"calls/"+LID+"/items"),
+      snap=>{ DATA=snap.val()||{}; render(); },
+      err =>{ LOCAL=true; DATA=localGet(); render(); meldung("Offline — nur auf diesem Gerät",true); });
+  }catch(e){ LOCAL=true; DATA=localGet(); render(); meldung("Offline — nur auf diesem Gerät",true); }
+}
+
+async function start(){
+  const g=localStorage.getItem(LS.lid);
+  if(g){ LID=g; $("#tor").classList.remove("on"); render(); verbinden(); return; }
+  $("#tor").classList.add("on");
+}
+$("#tor-ok").onclick=async()=>{
+  const c=norm($("#tor-x").value);
+  if(c.length<8){ $("#tor-msg").textContent="Der Code ist zu kurz."; return; }
+  $("#tor-msg").textContent="Moment …";
+  LID=await lidOf(c);
+  localStorage.setItem(LS.code,c); localStorage.setItem(LS.lid,LID);
+  $("#tor").classList.remove("on"); render(); verbinden();
+};
+$("#tor-x").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#tor-ok").click(); });
+
+start();
+</script>
+</body>
+</html>
