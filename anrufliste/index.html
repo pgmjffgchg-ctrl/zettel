@@ -270,7 +270,7 @@ textarea:focus,input[type=text]:focus{outline:none;border-color:var(--petrol)}
   <div class="torbox">
     <div class="logo"><svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></div>
     <h2>Anrufliste</h2>
-    <p>Einmalig den Zugangscode eingeben.<br>Danach bleibt er auf diesem Gerät.</p>
+    <p>Zugangscode eingeben.<br>Er wird nicht gespeichert und bei jedem Aufruf neu gebraucht.</p>
     <input type="text" id="tor-x" placeholder="anruf-…" autocomplete="off"
            autocapitalize="none" autocorrect="off" spellcheck="false">
     <button class="btn" id="tor-ok" style="width:100%">Öffnen</button>
@@ -292,7 +292,9 @@ window.ANRUF_CONFIG = {
 
 <script type="module">
 const CFG = window.ANRUF_CONFIG;
-const LS = { code:"anruf.code", lid:"anruf.lid", name:"anruf.name", showDone:"anruf.showDone" };
+// Zugangscode wird bewusst NICHT gespeichert — Ansage Martin, 15.09.2026.
+// Er wird bei jedem Aufruf neu abgefragt, bis eine richtige Anmeldung nachgerüstet ist.
+const LS = { name:"anruf.name", showDone:"anruf.showDone" };
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -444,8 +446,8 @@ $("#sb-erg").onclick=e=>{ if(e.target.id==="sb-erg") zu(); };
 $("#gear").onclick=()=>{ $("#set-name").value=localStorage.getItem(LS.name)||""; $("#sb-set").classList.add("on"); };
 $("#set-ok").onclick=()=>{ localStorage.setItem(LS.name,$("#set-name").value.trim()||"Martin"); $("#sb-set").classList.remove("on"); };
 $("#set-out").onclick=()=>{
-  if(!confirm("Abmelden? Der Zugangscode muss dann neu eingegeben werden.")) return;
-  localStorage.removeItem(LS.code); localStorage.removeItem(LS.lid); location.reload();
+  if(!confirm("Liste schließen? Der Zugangscode muss dann neu eingegeben werden.")) return;
+  location.reload();
 };
 $("#set-copy").onclick=async()=>{
   try{ await navigator.clipboard.writeText(location.href.split("#")[0]); meldung("Adresse kopiert"); }
@@ -483,16 +485,16 @@ async function verbinden(){
 }
 
 async function start(){
-  const g=localStorage.getItem(LS.lid);
-  if(g){ LID=g; $("#tor").classList.remove("on"); render(); verbinden(); return; }
+  // Kein gespeicherter Zugang: das Tor kommt bei jedem Aufruf.
   $("#tor").classList.add("on");
+  $("#tor-x").value = "";
 }
 $("#tor-ok").onclick=async()=>{
   const c=norm($("#tor-x").value);
   if(c.length<8){ $("#tor-msg").textContent="Der Code ist zu kurz."; return; }
   $("#tor-msg").textContent="Moment …";
   LID=await lidOf(c);
-  localStorage.setItem(LS.code,c); localStorage.setItem(LS.lid,LID);
+  $("#tor-x").value=""; $("#tor-msg").textContent="";
   $("#tor").classList.remove("on"); render(); verbinden();
 };
 $("#tor-x").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#tor-ok").click(); });
