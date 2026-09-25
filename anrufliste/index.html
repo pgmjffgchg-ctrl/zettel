@@ -304,7 +304,7 @@ textarea:focus,input[type=text]:focus,input[type=number]:focus{outline:none;bord
 </div>
 
 <script>
-/* Stand 25.09.2026, live. Neu seit 25.09.2026: Feld "Dauer des Gespraechs" (Feld `dauer`, Minuten als Zahl). */
+/* Stand 25.09.2026, live. Neu seit 25.09.2026: Feld "Dauer des Gespraechs" (Feld `dauer`, Minuten als Zahl); Erledigte verschwinden ab dem Folgetag (weg()). */
 window.ANRUF_CONFIG = {
   apiKey:"AIzaSyALgRRfV2Oqn4QFdCDALtSYoF50lLG32uM",
   authDomain:"zettel-40091.firebaseapp.com",
@@ -417,8 +417,13 @@ function karte(id,it,g){
     + '</div></div>';
 }
 
+// Erledigte verschwinden ab dem Folgetag ganz aus der Liste (Martin, 25.09.2026).
+// Sie bleiben in der Datenbank; Claude uebertraegt sie abends in den
+// portatour-Zwischenspeicher im Drive (Polnisch, Importformat).
+function weg(it){ return it.status==="erledigt" && (!it.at || iso(new Date(it.at))<heute()); }
+
 function render(){
-  const ids = Object.keys(DATA).filter(k=>DATA[k]&&DATA[k].kunde);
+  const ids = Object.keys(DATA).filter(k=>DATA[k]&&DATA[k].kunde&&!weg(DATA[k]));
   ids.sort((a,b)=>(DATA[a].order||0)-(DATA[b].order||0));
   const B={heute:[],woche:[],spaeter:[],erledigt:[]};
   ids.forEach(id=>B[gruppe(DATA[id])].push(id));
