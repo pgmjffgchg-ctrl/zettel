@@ -154,12 +154,12 @@ details[open] summary::before{content:"▾ "}
   padding:13px 8px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;
 }
 .opt.on{border-color:var(--petrol);background:var(--petrol);color:#fff}
-textarea,input[type=text]{
+textarea,input[type=text],input[type=number]{
   width:100%;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);
   border-radius:12px;padding:13px;font-size:16px;font-family:inherit;line-height:1.45;
 }
 textarea{min-height:132px;resize:vertical}
-textarea:focus,input[type=text]:focus{outline:none;border-color:var(--petrol)}
+textarea:focus,input[type=text]:focus,input[type=number]:focus{outline:none;border-color:var(--petrol)}
 .hint{font-size:12.5px;color:var(--mute);margin:7px 2px 16px;display:flex;gap:7px;align-items:flex-start}
 .hint svg{flex:none;width:15px;height:15px;fill:var(--mute);margin-top:2px}
 .wv{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:17px}
@@ -168,6 +168,11 @@ textarea:focus,input[type=text]:focus{outline:none;border-color:var(--petrol)}
   padding:9px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;
 }
 .wvb.on{border-color:var(--petrol);background:var(--petrol);color:#fff}
+.dauerIn{display:flex;align-items:center;gap:8px;margin:-8px 0 17px}
+.dauerIn input{width:96px;text-align:center}
+.dauerIn span{font-size:13.5px;color:var(--mute)}
+.pill.dm{background:var(--chip);color:var(--mute)}
+.pill.df{background:rgba(163,118,15,.16);color:var(--gelb)}
 .row{display:flex;gap:9px}
 .row .btn{flex:1}
 .link{background:none;border:none;color:var(--petrol);font-size:14px;font-weight:700;
@@ -220,6 +225,26 @@ textarea:focus,input[type=text]:focus{outline:none;border-color:var(--petrol)}
       <button class="opt" data-c="nicht">Nicht erreicht</button>
       <button class="opt" data-c="rueckruf">Rückruf vereinbart</button>
       <button class="opt" data-c="erledigt">Sache erledigt</button>
+    </div>
+
+    <!-- Dauer des Gespraechs, ergaenzt 24.09.2026 fuer die portatour-Zeitnormen -->
+    <div id="dauer-box">
+      <span class="lb">Dauer des Gesprächs (Minuten)</span>
+      <div class="wv" id="dauer-wv">
+        <button class="wvb" data-d="2">2</button>
+        <button class="wvb" data-d="3">3</button>
+        <button class="wvb" data-d="5">5</button>
+        <button class="wvb" data-d="10">10</button>
+        <button class="wvb" data-d="15">15</button>
+        <button class="wvb" data-d="20">20</button>
+        <button class="wvb" data-d="30">30</button>
+        <button class="wvb" data-d="45">45</button>
+        <button class="wvb" data-d="60">60</button>
+      </div>
+      <div class="dauerIn">
+        <input type="number" id="dauer-x" inputmode="numeric" min="1" max="600" placeholder="andere">
+        <span>Min.</span>
+      </div>
     </div>
 
     <span class="lb">Gesprächsnotiz</span>
@@ -279,6 +304,7 @@ textarea:focus,input[type=text]:focus{outline:none;border-color:var(--petrol)}
 </div>
 
 <script>
+/* Stand 25.09.2026, live. Neu seit 25.09.2026: Feld "Dauer des Gespraechs" (Feld `dauer`, Minuten als Zahl). */
 window.ANRUF_CONFIG = {
   apiKey:"AIzaSyALgRRfV2Oqn4QFdCDALtSYoF50lLG32uM",
   authDomain:"zettel-40091.firebaseapp.com",
@@ -300,7 +326,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 let LID=null, DB=null, DATA={}, LOCAL=false;
-let sheetId=null, sheetCode=null, sheetWv=0;
+let sheetId=null, sheetCode=null, sheetWv=0, sheetDauer=null;
 let showDone = localStorage.getItem(LS.showDone)==="1";
 
 const norm = c => String(c||"").trim().toLowerCase().replace(/\s+/g,"");
@@ -344,6 +370,18 @@ const TITEL={heute:"Heute",woche:"Diese Woche",spaeter:"Später",erledigt:"Erled
 const PHONE='<svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>';
 const PEN='<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
 
+// Dauer: bei "Nicht erreicht" gibt es keine, sonst zeigt die Karte sie oder "Dauer fehlt".
+function dauerPill(it){
+  if(it.ergebnisCode==="nicht") return "";
+  return it.dauer ? '<span class="pill dm">'+esc(it.dauer)+' Min.</span>'
+                  : '<span class="pill df">Dauer fehlt</span>';
+}
+function dauerZeigen(){
+  $$("#dauer-wv .wvb").forEach(x=>x.classList.toggle("on",+x.dataset.d===sheetDauer));
+  $("#dauer-x").value = sheetDauer && !$$("#dauer-wv .wvb").some(x=>+x.dataset.d===sheetDauer) ? sheetDauer : "";
+  $("#dauer-box").style.display = sheetCode==="nicht" ? "none" : "block";
+}
+
 function karte(id,it,g){
   const done = it.status==="erledigt";
   const tel  = String(it.tel||"").replace(/[^\d+]/g,"");
@@ -357,6 +395,7 @@ function karte(id,it,g){
     const m={erreicht:["ok","Erreicht"],nicht:["no","Nicht erreicht"],
              rueckruf:["rr","Rückruf vereinbart"],erledigt:["ok","Sache erledigt"]}[it.ergebnisCode]||["ok","Erledigt"];
     ergHtml='<div class="erg"><div class="ergkopf"><span class="pill '+m[0]+'">'+m[1]+'</span>'
+      +dauerPill(it)
       +(it.by?'<span>'+esc(it.by)+'</span>':'')+'</div>'
       +(it.notiz?'<div class="ergtext">'+esc(it.notiz)+'</div>':'')
       +(it.uebernommen?'':'<div class="offenMark">wartet auf Übernahme in portatour und Register</div>')
@@ -412,12 +451,13 @@ function meldung(t,warn){
 /* ---------- Blatt ---------- */
 function oeffne(id){
   const it=DATA[id]; if(!it) return;
-  sheetId=id; sheetCode=it.ergebnisCode||null; sheetWv=0;
+  sheetId=id; sheetCode=it.ergebnisCode||null; sheetWv=0; sheetDauer=it.dauer||null;
   $("#erg-t").textContent = it.status==="erledigt"?"Notiz bearbeiten":"Nach dem Gespräch";
   $("#erg-w").textContent = it.kunde+(it.person?" · "+it.person:"");
   $("#erg-x").value = it.notiz||"";
   $$("#sb-erg .opt").forEach(o=>o.classList.toggle("on",o.dataset.c===sheetCode));
-  $$("#sb-erg .wvb").forEach(o=>o.classList.toggle("on",o.dataset.w==="0"));
+  $$("#sb-erg .wvb[data-w]").forEach(o=>o.classList.toggle("on",o.dataset.w==="0"));
+  dauerZeigen();
   $("#erg-offen").style.display = it.status==="erledigt"?"block":"none";
   $("#sb-erg").classList.add("on");
 }
@@ -425,21 +465,31 @@ const zu = () => { $("#sb-erg").classList.remove("on"); sheetId=null; };
 
 $$("#sb-erg .opt").forEach(o=>o.onclick=()=>{
   sheetCode=o.dataset.c; $$("#sb-erg .opt").forEach(x=>x.classList.toggle("on",x===o));
+  dauerZeigen();
 });
-$$("#sb-erg .wvb").forEach(o=>o.onclick=()=>{
-  sheetWv=+o.dataset.w; $$("#sb-erg .wvb").forEach(x=>x.classList.toggle("on",x===o));
+$$("#sb-erg .wvb[data-w]").forEach(o=>o.onclick=()=>{
+  sheetWv=+o.dataset.w; $$("#sb-erg .wvb[data-w]").forEach(x=>x.classList.toggle("on",x===o));
 });
+$$("#dauer-wv .wvb").forEach(o=>o.onclick=()=>{
+  const d=+o.dataset.d; sheetDauer = sheetDauer===d ? null : d; dauerZeigen();
+});
+$("#dauer-x").oninput=()=>{
+  const v=Math.round(+$("#dauer-x").value);
+  sheetDauer = v>0 && v<=600 ? v : null;
+  $$("#dauer-wv .wvb").forEach(x=>x.classList.toggle("on",+x.dataset.d===sheetDauer));
+};
 $("#erg-ok").onclick=()=>{
   if(!sheetId) return;
   const p={ status:"erledigt", ergebnisCode:sheetCode||"erledigt",
             notiz:$("#erg-x").value.trim(), by:localStorage.getItem(LS.name)||"Martin",
-            at:Date.now(), uebernommen:false };
+            at:Date.now(), uebernommen:false,
+            dauer: (sheetCode==="nicht") ? null : (sheetDauer||null) };
   if(sheetWv>0){ p.status="offen"; p.wann=plus(sheetWv); }
   speichern(sheetId,p); zu();
   meldung(sheetWv>0 ? "Notiz gespeichert, Wiedervorlage "+dLabel(plus(sheetWv)) : "Gespeichert");
 };
 $("#erg-no").onclick=zu;
-$("#erg-offen").onclick=()=>{ if(sheetId){ speichern(sheetId,{status:"offen",ergebnisCode:null,at:null,uebernommen:false}); zu(); } };
+$("#erg-offen").onclick=()=>{ if(sheetId){ speichern(sheetId,{status:"offen",ergebnisCode:null,at:null,uebernommen:false,dauer:null}); zu(); } };
 $("#sb-erg").onclick=e=>{ if(e.target.id==="sb-erg") zu(); };
 
 /* ---------- Einstellungen ---------- */
@@ -464,6 +514,7 @@ $("#share").onclick=async()=>{
   const W={erreicht:"erreicht",nicht:"nicht erreicht",rueckruf:"Rückruf vereinbart",erledigt:"erledigt"};
   let t="Anrufliste "+d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear()+"\n\n";
   t += erl.length ? "Erledigt:\n"+erl.map(x=>"• "+x.kunde+" — "+(W[x.ergebnisCode]||"erledigt")
+        +(x.ergebnisCode==="nicht"?"":(x.dauer?", "+x.dauer+" Min.":", Dauer fehlt"))
         +(x.notiz?"\n  "+x.notiz.replace(/\n/g,"\n  "):"")).join("\n")+"\n\n"
       : "Heute noch nichts erledigt.\n\n";
   if(off.length) t+="Offen:\n"+off.map(x=>"• "+x.kunde).join("\n");
