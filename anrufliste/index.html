@@ -66,6 +66,8 @@ main{padding:16px 13px 0;max-width:720px;margin:0 auto}
 .card.spaeter{border-left-color:#C2C8CC}
 .card.woche{border-left-color:var(--petrol-l)}
 .card.done{border-left-color:var(--gruen);opacity:.72}
+.card.offenUeb{border-left-color:var(--gelb);opacity:1}
+.card.wartet{border-left-color:var(--gelb)}
 .in{padding:13px 14px 14px}
 .zeile1{display:flex;gap:10px;align-items:flex-start;margin-bottom:2px}
 .kunde{flex:1;min-width:0;font-weight:700;font-size:17px;letter-spacing:-.01em}
@@ -117,6 +119,11 @@ details[open] summary::before{content:"▾ "}
 .pill.rr{background:rgba(163,118,15,.16);color:var(--gelb)}
 .ergtext{font-size:14px;margin-top:7px;white-space:pre-wrap}
 .offenMark{font-size:11.5px;color:var(--gelb);margin-top:6px;font-weight:700}
+/* 02.10.2026: Notiz liegt noch auf dem Geraet und ist nicht in der Datenbank. */
+.unsent{
+  font-size:11.5px;font-weight:700;color:#fff;background:var(--gelb);
+  border-radius:6px;padding:2px 8px;display:inline-block;margin-top:7px;
+}
 
 .leer{
   text-align:center;color:var(--mute);font-size:14.5px;
@@ -279,9 +286,10 @@ textarea:focus,input[type=text]:focus,input[type=number]:focus{outline:none;bord
     <span class="lb">Wer hakt ab</span>
     <input type="text" id="set-name" placeholder="Martin" autocomplete="off" style="margin-bottom:15px">
     <div class="warn">
-      Hier stehen Kundendaten. Der Zugangscode ist der Schlüssel — die Adresse allein zeigt
-      nichts. Code bitte nicht weitergeben.
+      Hier stehen Kundennamen, Nummern und Gesprächsnotizen. Hinter der App steht kein Konto und
+      kein Passwort — der Zugangscode ist der einzige Schutz. Nicht weitergeben, nicht aufschreiben.
     </div>
+    <div class="warn" id="set-warteschlange" style="display:none"></div>
     <div class="row">
       <button class="btn" id="set-ok">Fertig</button>
       <button class="btn gh" id="set-out">Abmelden</button>
@@ -304,7 +312,12 @@ textarea:focus,input[type=text]:focus,input[type=number]:focus{outline:none;bord
 </div>
 
 <script>
-/* Stand 25.09.2026, live. Neu seit 25.09.2026: Feld "Dauer des Gespraechs" (Feld `dauer`, Minuten als Zahl); Erledigte verschwinden ab dem Folgetag (weg()). */
+/* Stand 02.10.2026, live. Grundlage: Live-Stand 25.09.2026 (Feld `dauer`, weg()).
+   Neu: Notizen gehen zuerst aufs Geraet in eine Warteschlange und koennen durch
+   einen Stand aus der Datenbank nicht mehr ueberschrieben werden; Serverstand wird
+   auf dem Geraet gespiegelt (keine leere Liste im Funkloch); Notiz und Dauer auch
+   auf offenen Karten; heute bearbeitete Anrufe mit Wiedervorlage im Tagesergebnis;
+   Erledigte verschwinden ab dem Folgetag nur, wenn `uebernommen` true ist. */
 window.ANRUF_CONFIG = {
   apiKey:"AIzaSyALgRRfV2Oqn4QFdCDALtSYoF50lLG32uM",
   authDomain:"zettel-40091.firebaseapp.com",
@@ -321,13 +334,15 @@ const CFG = window.ANRUF_CONFIG;
 // Zugangscode wird bewusst NICHT gespeichert — Ansage Martin, 15.09.2026.
 // Er wird bei jedem Aufruf neu abgefragt, bis eine richtige Anmeldung nachgerüstet ist.
 const LS = { name:"anruf.name", showDone:"anruf.showDone" };
+const FB_DB = "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-let LID=null, DB=null, DATA={}, LOCAL=false;
+let LID=null, DB=null, DATA={}, LOCAL=false, SERVER={};
 let sheetId=null, sheetCode=null, sheetWv=0, sheetDauer=null;
 let showDone = localStorage.getItem(LS.showDone)==="1";
+let seqZaehler = Date.now();
 
 const norm = c => String(c||"").trim().toLowerCase().replace(/\s+/g,"");
 async function lidOf(code){
@@ -346,27 +361,111 @@ function dLabel(s){
 }
 const uhr = ts => { const d=new Date(ts); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
 
-function localGet(){ try{ return JSON.parse(localStorage.getItem("anruf.data."+LID)||"{}"); }catch(e){ return {}; } }
-function localSet(o){ localStorage.setItem("anruf.data."+LID, JSON.stringify(o)); }
+/* ---------- Geraetespeicher: Spiegel und Warteschlange ----------
+   Spiegel  = letzter bekannter Stand aus der Datenbank.
+   Warteschlange = eigene Eingaben, die noch nicht in der Datenbank sind.
+   Die Warteschlange liegt IMMER oben auf dem Spiegel. Darum kann ein
+   Stand aus der Datenbank eine ungesendete Notiz nicht ueberschreiben. */
+const K_SPIEGEL = () => "anruf.data."+LID;
+const K_WARTE   = () => "anruf.warte."+LID;
 
-async function speichern(id, patch){
-  DATA[id] = Object.assign({}, DATA[id], patch); render();
-  if(LOCAL){ const o=localGet(); o[id]=DATA[id]; localSet(o); return; }
-  try{
-    const { ref, update } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js");
-    await update(ref(DB,"calls/"+LID+"/items/"+id), patch);
-  }catch(e){ meldung("Nicht gespeichert — keine Verbindung", true); }
+function jsonLesen(k){ try{ return JSON.parse(localStorage.getItem(k)||"{}"); }catch(e){ return {}; } }
+function jsonSchreiben(k,o){ try{ localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }
+
+const spiegelLesen     = () => jsonLesen(K_SPIEGEL());
+const spiegelSchreiben = o  => jsonSchreiben(K_SPIEGEL(), o||{});
+const warteLesen       = () => jsonLesen(K_WARTE());
+const warteSchreiben   = o  => jsonSchreiben(K_WARTE(), o||{});
+
+function warteMerken(id, patch){
+  const o = warteLesen();
+  const seq = ++seqZaehler;
+  o[id] = Object.assign({}, o[id], patch, { _seq: seq });
+  warteSchreiben(o);
+  return seq;
+}
+// Nur wegstreichen, wenn in der Zwischenzeit nichts Neueres dazugekommen ist.
+function warteErledigt(id, seq){
+  const o = warteLesen();
+  if(o[id] && o[id]._seq === seq){ delete o[id]; warteSchreiben(o); }
+}
+function warteAnzahl(){ return Object.keys(warteLesen()).length; }
+
+// Serverstand plus eigene ungesendete Eingaben.
+function zusammenlegen(server){
+  const d = {};
+  Object.keys(server||{}).forEach(k=>{ d[k] = server[k]; });
+  const w = warteLesen();
+  Object.keys(w).forEach(k=>{
+    const p = Object.assign({}, w[k]); delete p._seq;
+    d[k] = Object.assign({}, d[k], p, { _nichtGesendet:true });
+  });
+  return d;
 }
 
+/* ---------- Speichern ---------- */
+async function speichern(id, patch){
+  const seq = warteMerken(id, patch);          // zuerst aufs Geraet, immer
+  DATA = zusammenlegen(SERVER); render();
+  if(LOCAL || !DB){ return; }
+  await senden(id, seq);
+}
+
+async function senden(id, seq){
+  if(LOCAL || !DB) return false;
+  const eintrag = warteLesen()[id];
+  if(!eintrag) return true;
+  const p = Object.assign({}, eintrag); delete p._seq;
+  try{
+    const { ref, update } = await import(FB_DB);
+    await update(ref(DB,"calls/"+LID+"/items/"+id), p);
+    warteErledigt(id, seq);
+    DATA = zusammenlegen(SERVER); render();
+    return true;
+  }catch(e){
+    meldung("Noch nicht gesendet — liegt auf dem Gerät", true);
+    DATA = zusammenlegen(SERVER); render();
+    return false;
+  }
+}
+
+// Warteschlange abarbeiten: nach jedem Stand aus der Datenbank, wenn das Netz
+// wiederkommt, und sonst alle 30 Sekunden.
+let sendeLaeuft = false;
+async function warteschlangeSenden(){
+  if(sendeLaeuft || LOCAL || !DB) return;
+  sendeLaeuft = true;
+  try{
+    const o = warteLesen();
+    for(const id of Object.keys(o)){
+      const ok = await senden(id, o[id]._seq);
+      if(!ok) break;                            // kein Netz: spaeter nochmal
+    }
+  } finally { sendeLaeuft = false; }
+}
+window.addEventListener("online", warteschlangeSenden);
+setInterval(warteschlangeSenden, 30000);
+
+/* ---------- Einteilung ---------- */
+// Erledigte verschwinden ab dem Folgetag aus der Liste - aber nur, wenn sie
+// wirklich uebernommen sind (Martin 25.09.2026, geschaerft 02.10.2026).
+function weg(it){
+  return it.status==="erledigt" && it.uebernommen===true
+      && (!it.at || iso(new Date(it.at))<heute());
+}
 function gruppe(it){
-  if(it.status==="erledigt") return "erledigt";
+  if(it.status==="erledigt"){
+    if(!it.uebernommen && (!it.at || iso(new Date(it.at))<heute())) return "offenUeb";
+    return "erledigt";
+  }
   const w = it.wann||"heute";
   if(w==="heute") return "heute";
   if(w==="woche") return "woche";
   if(w<=heute())  return "heute";
   return "spaeter";
 }
-const TITEL={heute:"Heute",woche:"Diese Woche",spaeter:"Später",erledigt:"Erledigt"};
+const TITEL={heute:"Heute",woche:"Diese Woche",spaeter:"Später",
+             offenUeb:"Noch nicht übernommen",erledigt:"Erledigt"};
 const PHONE='<svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>';
 const PEN='<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
 
@@ -390,18 +489,25 @@ function karte(id,it,g){
   else if(g==="spaeter" && it.wann && it.wann.length===10) tag = "ab "+dLabel(it.wann);
   else if(it.wannText) tag = it.wannText;
 
+  // 02.10.2026: Ergebnisblock auch auf offenen Karten, sobald es eine Notiz,
+  // eine Dauer oder ein Ergebnis gibt. Vorher war die Notiz bei gesetzter
+  // Wiedervorlage nirgends zu sehen.
   let ergHtml="";
-  if(done){
+  if(done || it.notiz || it.dauer || it.ergebnisCode){
     const m={erreicht:["ok","Erreicht"],nicht:["no","Nicht erreicht"],
-             rueckruf:["rr","Rückruf vereinbart"],erledigt:["ok","Sache erledigt"]}[it.ergebnisCode]||["ok","Erledigt"];
-    ergHtml='<div class="erg"><div class="ergkopf"><span class="pill '+m[0]+'">'+m[1]+'</span>'
+             rueckruf:["rr","Rückruf vereinbart"],erledigt:["ok","Sache erledigt"]}[it.ergebnisCode]
+            || (done?["ok","Erledigt"]:null);
+    ergHtml='<div class="erg"><div class="ergkopf">'
+      +(m?'<span class="pill '+m[0]+'">'+m[1]+'</span>':'')
       +dauerPill(it)
-      +(it.by?'<span>'+esc(it.by)+'</span>':'')+'</div>'
+      +(it.by?'<span>'+esc(it.by)+'</span>':'')
+      +(!done&&it.at?'<span>notiert '+uhr(it.at)+' Uhr</span>':'')+'</div>'
       +(it.notiz?'<div class="ergtext">'+esc(it.notiz)+'</div>':'')
-      +(it.uebernommen?'':'<div class="offenMark">wartet auf Übernahme in portatour und Register</div>')
+      +(done&&!it.uebernommen?'<div class="offenMark">wartet auf Übernahme in portatour und Register</div>':'')
+      +(it._nichtGesendet?'<div class="unsent">noch nicht gesendet</div>':'')
       +'</div>';
   }
-  return '<div class="card '+g+(done?" done":"")+'" data-id="'+id+'"><div class="in">'
+  return '<div class="card '+g+(done?" done":"")+(it._nichtGesendet?" wartet":"")+'" data-id="'+id+'"><div class="in">'
     + '<div class="zeile1"><div class="kunde">'+esc(it.kunde)+'</div>'
     +   (it.register?'<span class="reg">'+esc(it.register)+'</span>':'')+'</div>'
     + (it.person?'<div class="person">'+esc(it.person)+'</div>':'')
@@ -417,33 +523,29 @@ function karte(id,it,g){
     + '</div></div>';
 }
 
-// Erledigte verschwinden ab dem Folgetag ganz aus der Liste (Martin, 25.09.2026).
-// Sie bleiben in der Datenbank; Claude uebertraegt sie abends in den
-// portatour-Zwischenspeicher im Drive (Polnisch, Importformat).
-function weg(it){ return it.status==="erledigt" && (!it.at || iso(new Date(it.at))<heute()); }
-
 function render(){
   const ids = Object.keys(DATA).filter(k=>DATA[k]&&DATA[k].kunde&&!weg(DATA[k]));
   ids.sort((a,b)=>(DATA[a].order||0)-(DATA[b].order||0));
-  const B={heute:[],woche:[],spaeter:[],erledigt:[]};
+  const B={heute:[],woche:[],spaeter:[],offenUeb:[],erledigt:[]};
   ids.forEach(id=>B[gruppe(DATA[id])].push(id));
 
   let html="";
-  ["heute","woche","spaeter"].forEach(g=>{
+  ["heute","woche","spaeter","offenUeb"].forEach(g=>{
     if(!B[g].length) return;
     html+='<div class="sec"><h2>'+TITEL[g]+'<span class="n">'+B[g].length+'</span></h2>'
         + B[g].map(id=>karte(id,DATA[id],g)).join("")+'</div>';
   });
-  if(!B.heute.length&&!B.woche.length&&!B.spaeter.length)
+  if(!B.heute.length&&!B.woche.length&&!B.spaeter.length&&!B.offenUeb.length)
     html+='<div class="leer">Keine offenen Anrufe.<br>Die Liste füllt sich beim nächsten Postfach-Durchgang.</div>';
   if(showDone&&B.erledigt.length)
     html+='<div class="sec"><h2>Erledigt<span class="n">'+B.erledigt.length+'</span></h2>'
         + B.erledigt.map(id=>karte(id,DATA[id],"erledigt")).join("")+'</div>';
   $("#app").innerHTML=html;
 
-  const d=new Date();
+  const d=new Date(), offen=warteAnzahl();
   $("#sub").textContent = TAG[d.getDay()]+", "+d.getDate()+". "+MON[d.getMonth()]
-    +" · "+B.heute.length+" heute"+(B.erledigt.length?" · "+B.erledigt.length+" erledigt":"");
+    +" · "+B.heute.length+" heute"+(B.erledigt.length?" · "+B.erledigt.length+" erledigt":"")
+    +(offen?" · "+offen+" nicht gesendet":"");
   $("#toggleDone").textContent = showDone?"Erledigte aus":"Erledigte";
   $$("[data-notiz]").forEach(b=>b.onclick=()=>oeffne(b.dataset.notiz));
 }
@@ -485,8 +587,12 @@ $("#dauer-x").oninput=()=>{
 };
 $("#erg-ok").onclick=()=>{
   if(!sheetId) return;
+  const neu = $("#erg-x").value.trim();
+  const alt = (DATA[sheetId] && DATA[sheetId].notiz) || "";
+  // 02.10.2026: eine ausgefuellte Notiz wird nicht aus Versehen geleert.
+  if(alt && !neu && !confirm("Die Notiz war ausgefüllt und ist jetzt leer. Notiz wirklich löschen?")) return;
   const p={ status:"erledigt", ergebnisCode:sheetCode||"erledigt",
-            notiz:$("#erg-x").value.trim(), by:localStorage.getItem(LS.name)||"Martin",
+            notiz:neu, by:localStorage.getItem(LS.name)||"Martin",
             at:Date.now(), uebernommen:false,
             dauer: (sheetCode==="nicht") ? null : (sheetDauer||null) };
   if(sheetWv>0){ p.status="offen"; p.wann=plus(sheetWv); }
@@ -494,13 +600,24 @@ $("#erg-ok").onclick=()=>{
   meldung(sheetWv>0 ? "Notiz gespeichert, Wiedervorlage "+dLabel(plus(sheetWv)) : "Gespeichert");
 };
 $("#erg-no").onclick=zu;
-$("#erg-offen").onclick=()=>{ if(sheetId){ speichern(sheetId,{status:"offen",ergebnisCode:null,at:null,uebernommen:false,dauer:null}); zu(); } };
+$("#erg-offen").onclick=()=>{ if(sheetId){ speichern(sheetId,{status:"offen",ergebnisCode:null,at:null,uebernommen:false,dauer:null,notiz:null}); zu(); } };
 $("#sb-erg").onclick=e=>{ if(e.target.id==="sb-erg") zu(); };
 
 /* ---------- Einstellungen ---------- */
-$("#gear").onclick=()=>{ $("#set-name").value=localStorage.getItem(LS.name)||""; $("#sb-set").classList.add("on"); };
+$("#gear").onclick=()=>{
+  $("#set-name").value=localStorage.getItem(LS.name)||"";
+  const n=warteAnzahl(), box=$("#set-warteschlange");
+  if(n){ box.style.display="block";
+         box.textContent = n+(n===1?" Eintrag liegt":" Einträge liegen")
+           +" noch auf dem Gerät und ist nicht in der Datenbank. Bei Netz geht das von"
+           +" selbst raus. Nicht abmelden, solange hier eine Zahl steht."; }
+  else { box.style.display="none"; }
+  $("#sb-set").classList.add("on");
+};
 $("#set-ok").onclick=()=>{ localStorage.setItem(LS.name,$("#set-name").value.trim()||"Martin"); $("#sb-set").classList.remove("on"); };
 $("#set-out").onclick=()=>{
+  const n=warteAnzahl();
+  if(n && !confirm(n+" Eintrag/Einträge sind noch nicht in der Datenbank. Beim Abmelden bleiben sie auf dem Gerät liegen. Trotzdem schließen?")) return;
   if(!confirm("Liste schließen? Der Zugangscode muss dann neu eingegeben werden.")) return;
   location.reload();
 };
@@ -514,30 +631,55 @@ $("#toggleDone").onclick=()=>{ showDone=!showDone; localStorage.setItem(LS.showD
 /* ---------- Tagesergebnis ---------- */
 $("#share").onclick=async()=>{
   const d=new Date();
-  const erl=Object.values(DATA).filter(x=>x&&x.status==="erledigt"&&x.at&&iso(new Date(x.at))===heute());
-  const off=Object.values(DATA).filter(x=>x&&x.status!=="erledigt"&&gruppe(x)==="heute");
+  // 02.10.2026: alles, was heute bearbeitet wurde - auch mit Wiedervorlage.
+  const heuteBearbeitet = Object.values(DATA).filter(x=>x&&x.at&&iso(new Date(x.at))===heute()&&x.ergebnisCode);
+  const off = Object.values(DATA).filter(x=>x&&x.status!=="erledigt"&&gruppe(x)==="heute"
+                                           &&!(x.at&&iso(new Date(x.at))===heute()&&x.ergebnisCode));
   const W={erreicht:"erreicht",nicht:"nicht erreicht",rueckruf:"Rückruf vereinbart",erledigt:"erledigt"};
   let t="Anrufliste "+d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear()+"\n\n";
-  t += erl.length ? "Erledigt:\n"+erl.map(x=>"• "+x.kunde+" — "+(W[x.ergebnisCode]||"erledigt")
+  t += heuteBearbeitet.length
+    ? "Erledigt:\n"+heuteBearbeitet.map(x=>"• "+x.kunde+" — "+(W[x.ergebnisCode]||"erledigt")
         +(x.ergebnisCode==="nicht"?"":(x.dauer?", "+x.dauer+" Min.":", Dauer fehlt"))
+        +(x.status!=="erledigt"&&x.wann&&x.wann.length===10?", Wiedervorlage "+dLabel(x.wann):"")
         +(x.notiz?"\n  "+x.notiz.replace(/\n/g,"\n  "):"")).join("\n")+"\n\n"
-      : "Heute noch nichts erledigt.\n\n";
+    : "Heute noch nichts erledigt.\n\n";
   if(off.length) t+="Offen:\n"+off.map(x=>"• "+x.kunde).join("\n");
+  const n=warteAnzahl();
+  if(n) t+="\n\nHinweis: "+n+" Eintrag/Einträge sind noch nicht in der Datenbank.";
   try{ await navigator.share({title:"Anrufliste",text:t}); }
   catch(e){ try{ await navigator.clipboard.writeText(t); meldung("In die Zwischenablage kopiert"); }catch(_){}}
 };
 
 /* ---------- Verbinden ---------- */
 async function verbinden(){
-  if(!CFG||!CFG.databaseURL){ LOCAL=true; DATA=localGet(); render(); meldung("Nur auf diesem Gerät",true); return; }
+  // 02.10.2026: erst den gespiegelten Stand zeigen, dann verbinden. So steht
+  // die Liste auch im Funkloch da und nicht "Keine offenen Anrufe".
+  SERVER = spiegelLesen();
+  DATA = zusammenlegen(SERVER); render();
+
+  if(!CFG||!CFG.databaseURL||CFG.databaseURL.indexOf("__")===0){
+    LOCAL=true; meldung("Nur auf diesem Gerät",true); return;
+  }
   try{
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js");
-    const { getDatabase, ref, onValue } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js");
+    const { getDatabase, ref, onValue } = await import(FB_DB);
     DB = getDatabase(initializeApp(CFG));
     onValue(ref(DB,"calls/"+LID+"/items"),
-      snap=>{ DATA=snap.val()||{}; render(); },
-      err =>{ LOCAL=true; DATA=localGet(); render(); meldung("Offline — nur auf diesem Gerät",true); });
-  }catch(e){ LOCAL=true; DATA=localGet(); render(); meldung("Offline — nur auf diesem Gerät",true); }
+      snap=>{
+        LOCAL=false;
+        SERVER = snap.val()||{};
+        spiegelSchreiben(SERVER);              // Spiegel nachziehen
+        DATA = zusammenlegen(SERVER); render();
+        warteschlangeSenden();                 // liegt noch was? dann jetzt
+      },
+      err =>{
+        LOCAL=true; DATA=zusammenlegen(SERVER); render();
+        meldung("Offline — die Liste ist der letzte bekannte Stand",true);
+      });
+  }catch(e){
+    LOCAL=true; DATA=zusammenlegen(SERVER); render();
+    meldung("Offline — die Liste ist der letzte bekannte Stand",true);
+  }
 }
 
 async function start(){
@@ -549,9 +691,12 @@ $("#tor-ok").onclick=async()=>{
   const c=norm($("#tor-x").value);
   if(c.length<8){ $("#tor-msg").textContent="Der Code ist zu kurz."; return; }
   $("#tor-msg").textContent="Moment …";
+  const kurz = c.length<20;                    // 02.10.2026: anmahnen, nicht sperren
   LID=await lidOf(c);
   $("#tor-x").value=""; $("#tor-msg").textContent="";
-  $("#tor").classList.remove("on"); render(); verbinden();
+  $("#tor").classList.remove("on");
+  verbinden();
+  if(kurz) setTimeout(()=>meldung("Zugangscode ist kurz — hier stehen Kundennamen und Notizen",true),1200);
 };
 $("#tor-x").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#tor-ok").click(); });
 
