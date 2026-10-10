@@ -217,6 +217,7 @@ textarea:focus,input[type=text]:focus,input[type=number]:focus{outline:none;bord
 
 <div class="foot">
   <button class="btn" id="share">Tagesergebnis schicken</button>
+  <button class="btn gh" id="neu">+ Anruf</button>
   <button class="btn gh" id="toggleDone">Erledigte</button>
 </div>
 
@@ -275,6 +276,33 @@ textarea:focus,input[type=text]:focus,input[type=number]:focus{outline:none;bord
       <button class="btn gh" id="erg-no">Abbrechen</button>
     </div>
     <button class="link" id="erg-offen" style="display:none">Wieder auf offen setzen</button>
+  </div>
+</div>
+
+<!-- Eingehender Anruf, 10.10.2026 -->
+<div class="bg" id="sb-neu">
+  <div class="sheet">
+    <h3>Eingehender Anruf</h3>
+    <div class="who">Wird beim nächsten Durchgang dem Kunden zugeordnet.</div>
+    <span class="lb">Kunde</span>
+    <input type="text" id="neu-kunde" placeholder="Firma, so wie du sie sagst" autocomplete="off" style="margin-bottom:15px">
+    <span class="lb">Ansprechpartner (freiwillig)</span>
+    <input type="text" id="neu-person" autocomplete="off" style="margin-bottom:15px">
+    <span class="lb">Nummer (freiwillig)</span>
+    <input type="text" id="neu-tel" inputmode="tel" autocomplete="off" style="margin-bottom:15px">
+    <span class="lb">Dauer des Gesprächs (Minuten)</span>
+    <div class="wv" id="neu-dauer-wv">
+      <button class="wvb" data-d="2">2</button><button class="wvb" data-d="5">5</button>
+      <button class="wvb" data-d="10">10</button><button class="wvb" data-d="15">15</button>
+      <button class="wvb" data-d="30">30</button><button class="wvb" data-d="60">60</button>
+    </div>
+    <span class="lb">Gesprächsnotiz</span>
+    <textarea id="neu-notiz" placeholder="Was will der Kunde? Einfach diktieren." autocapitalize="sentences"></textarea>
+    <div class="hint"><span>Muster, Angebot, Unterlagen: daraus wird beim nächsten Durchgang ein Entwurf an den zuständigen Innendienst.</span></div>
+    <div class="row">
+      <button class="btn" id="neu-ok">Speichern</button>
+      <button class="btn gh" id="neu-no">Abbrechen</button>
+    </div>
   </div>
 </div>
 
@@ -509,7 +537,8 @@ function karte(id,it,g){
   }
   return '<div class="card '+g+(done?" done":"")+(it._nichtGesendet?" wartet":"")+'" data-id="'+id+'"><div class="in">'
     + '<div class="zeile1"><div class="kunde">'+esc(it.kunde)+'</div>'
-    +   (it.register?'<span class="reg">'+esc(it.register)+'</span>':'')+'</div>'
+    +   (it.register?'<span class="reg">'+esc(it.register)+'</span>':'')
+    +   (it.typ==="eingehend"?'<span class="reg">eingehend</span>':'')+'</div>'
     + (it.person?'<div class="person">'+esc(it.person)+'</div>':'')
     + (tag?'<div class="wannTag">'+esc(tag)+'</div>':'')
     + '<div class="akt">'
@@ -627,6 +656,43 @@ $("#set-copy").onclick=async()=>{
 };
 $("#sb-set").onclick=e=>{ if(e.target.id==="sb-set") $("#sb-set").classList.remove("on"); };
 $("#toggleDone").onclick=()=>{ showDone=!showDone; localStorage.setItem(LS.showDone,showDone?"1":"0"); render(); };
+
+/* ---------- Eingehender Anruf (10.10.2026) ----------
+   Legt einen NEUEN Eintrag an, per Teil-Update auf items/<neue Id>.
+   Nie ein Schreiben auf items selbst, nie auf einen bestehenden Eintrag. */
+let neuDauer = null;
+$("#neu").onclick = () => {
+  ["#neu-kunde","#neu-person","#neu-tel","#neu-notiz"].forEach(s=>$(s).value="");
+  neuDauer = null;
+  $$("#neu-dauer-wv .wvb").forEach(x=>x.classList.remove("on"));
+  $("#sb-neu").classList.add("on");
+};
+$$("#neu-dauer-wv .wvb").forEach(o=>o.onclick=()=>{
+  const d=+o.dataset.d; neuDauer = neuDauer===d ? null : d;
+  $$("#neu-dauer-wv .wvb").forEach(x=>x.classList.toggle("on",+x.dataset.d===neuDauer));
+});
+const neuZu = () => $("#sb-neu").classList.remove("on");
+$("#neu-no").onclick = neuZu;
+$("#sb-neu").onclick = e => { if(e.target.id==="sb-neu") neuZu(); };
+$("#neu-ok").onclick = () => {
+  const kunde = $("#neu-kunde").value.trim();
+  const notiz = $("#neu-notiz").value.trim();
+  if(!kunde){ meldung("Kunde fehlt", true); return; }
+  if(!notiz){ meldung("Notiz fehlt", true); return; }
+  const id = "in" + Date.now().toString(36);
+  const p = {
+    kunde, typ:"eingehend",
+    person: $("#neu-person").value.trim() || null,
+    tel:    $("#neu-tel").value.trim()    || null,
+    status:"erledigt", ergebnisCode:"erreicht",
+    notiz, dauer: neuDauer,
+    by: localStorage.getItem(LS.name) || "Martin",
+    at: Date.now(), uebernommen:false, order: Date.now()
+  };
+  speichern(id, p);
+  neuZu();
+  meldung("Anruf gespeichert");
+};
 
 /* ---------- Tagesergebnis ---------- */
 $("#share").onclick=async()=>{
